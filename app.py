@@ -1,7 +1,9 @@
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for, Response
+from werkzeug.security import generate_password_hash, check_password_hash
 import psutil 
 import json
 import time
+import sqlite3
 
 from collections import deque
 
@@ -24,6 +26,34 @@ app.secret_key = "123456789"  # Change this to a random secret key in production
 USERNAME = "admin"
 PASSWORD = "manpoopa"
 
+def init_db():
+    conn = sqlite3.connect("metrics.db")
+    c = conn.cursor()
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server TEXT,
+            cpu REAL,
+            memory REAL,
+            disk REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    # In a real application, you would set up your database here
+
+init_db()
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -32,14 +62,46 @@ def login():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-        
-        if username == USERNAME and password == PASSWORD:
+
+        conn = sqlite3.connect("metrics.db")
+        c = conn.cursor()
+        c.execute("SELECT password FROM users WHERE username = ?", (username,))
+        result = c.fetchone()
+        conn.close()
+        if user and check_password_hash(result[0], password):
             session["user"] = username
+
+        
+        
             return redirect(url_for("dashboard"))
         else:
             return render_template("login.html", error="Invalid credentials")
-    
+        
     return render_template("login.html")
+
+@app.route("signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        hashed_password = generate_password_hash(password)
+
+        conn = sqlite3.connect("metrics.db")
+        c = conn.cursor()
+        try:
+            c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
+            conn.commit()
+            session["user"] = username
+            return redirect(url_for("dashboard"))
+        except sqlite3.IntegrityError:
+            return render_template("signup.html", error="Username already exists")
+        finally:
+            conn.close()
+
+    return render_template("signup.html")
+    
+   
 
 @app.route("/projects")
 def projects():
