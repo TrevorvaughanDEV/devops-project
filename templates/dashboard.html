@@ -164,6 +164,15 @@ color:#64748b;
 <a href="/logout" class="logout">Logout</a>
 </div>
 
+<div style="margin-top: 15px; display:flex; gap:15px; align-items:center;">
+    <select id="serverSelect" style="background: rgba(255,255,255,0.04); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.05); padding: 8px; border-radius: 8px;">
+        <option value="server1">Production</option>
+        <option value="server2">Staging</option>
+    </select>
+
+    <h3 id="serverName">Server: Production</h3>
+</div>
+
 <div class="status">
 Status: <span id="status">Checking...</span>
 </div>
@@ -295,11 +304,14 @@ diskChart.update();
 
 async function fetchData() {
 try {
-const res = await fetch("/api/system_info");
+const server = document.getElementById("serverSelect").value;
+const res = await fetch(`/api/system_info?server=${server}`);
 const data = await res.json();
 
 updateUI(data);
 updateCharts(data);
+
+document.getElementById("serverName").innerText = "Server: " + data.server;
 
 } catch {
 document.getElementById("status").innerText = "Offline";
