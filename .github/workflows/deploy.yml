@@ -20,10 +20,10 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build image
-        run: docker build -t trevorvaughandev/devops-app:latest .
+        run: docker build -t trevorvaughandev/devops-app:${{ github.sha }} .
 
       - name: Push image
-        run: docker push trevorvaughandev/devops-app:latest
+        run: docker push trevorvaughandev/devops-app:${{ github.sha }} .
 
       - name: Deploy to AWS
         uses: appleboy/ssh-action@v1.0.0
@@ -32,6 +32,6 @@ jobs:
           username: ubuntu
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
-            sudo docker pull trevorvaughandev/devops-app:latest
+            sudo docker pull trevorvaughandev/devops-app:${{ github.sha }} .
             sudo docker rm -f $(sudo docker ps -aq)
-            sudo docker run -d -p 5000:5000 --restart unless-stopped trevorvaughandev/devops-app:latest
+            sudo docker run -d -p 5000:5000 --restart unless-stopped trevorvaughandev/devops-app:${{ github.sha }} .
