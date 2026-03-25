@@ -3,9 +3,9 @@ import psutil
 import json
 import time
 import sqlite3
+import os
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-
 from collections import deque
 
 history = {
@@ -17,15 +17,11 @@ history = {
 servers = {
     "server1": {"name": "Production"},
     "server2": {"name": "Staging"}
-
 }
 
-
 app = Flask(__name__)
-app.secret_key = "123456789"  # Change this to a random secret key in production
-
-USERNAME = "admin"
-PASSWORD = "manpoopa"
+# ⚠️ IMPORTANT: Change this secret key in production!
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-in-production")
 
 def init_db():
     conn = sqlite3.connect("metrics.db")

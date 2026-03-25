@@ -1,15 +1,250 @@
-<body style="background:#020617; color:white; font-family:Arial; text-align:center; padding:50px;">
-<h1>About Me</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About • DevOps Platform</title>
 
-<p>I’m Trevor Vaughan, an aspiring DevOps engineer.</p>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
 
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+font-family: 'Inter', sans-serif;
+background: #020617;
+color: #e2e8f0;
+display: flex;
+}
+
+.sidebar {
+width: 260px;
+height: 100vh;
+background: rgba(255,255,255,0.02);
+backdrop-filter: blur(12px);
+padding: 30px 20px;
+border-right: 1px solid rgba(255,255,255,0.08);
+position: fixed;
+left: 0;
+overflow-y: auto;
+}
+
+.sidebar h2 {
+margin-bottom: 35px;
+font-size: 1.3rem;
+background: linear-gradient(90deg, #22c55e, #3b82f6);
+-webkit-background-clip: text;
+background-clip: text;
+color: transparent;
+}
+
+.sidebar a {
+display: flex;
+align-items: center;
+margin: 12px 0;
+padding: 12px 15px;
+transition: all 0.3s;
+border-radius: 10px;
+color: #94a3b8;
+text-decoration: none;
+font-size: 0.95rem;
+}
+
+.sidebar a:hover, .sidebar a.active {
+background: rgba(59, 130, 246, 0.2);
+color: #3b82f6;
+transform: translateX(5px);
+}
+
+.main {
+flex: 1;
+margin-left: 260px;
+padding: 30px;
+overflow-y: auto;
+}
+
+.header {
+backdrop-filter: blur(12px);
+background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.8));
+padding: 40px;
+border-radius: 15px;
+border: 1px solid rgba(255,255,255,0.1);
+margin-bottom: 30px;
+text-align: center;
+}
+
+.header h1 {
+font-size: 2rem;
+background: linear-gradient(90deg, #3b82f6, #22c55e);
+-webkit-background-clip: text;
+background-clip: text;
+color: transparent;
+margin-bottom: 20px;
+}
+
+.content {
+max-width: 700px;
+margin: 0 auto;
+}
+
+.card {
+background: linear-gradient(135deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0.8));
+padding: 30px;
+border-radius: 15px;
+border: 1px solid rgba(255,255,255,0.08);
+backdrop-filter: blur(10px);
+margin-bottom: 25px;
+transition: all 0.3s ease;
+}
+
+.card:hover {
+transform: translateY(-5px);
+box-shadow: 0 15px 40px rgba(59, 130, 246, 0.15);
+}
+
+.card h3 {
+font-size: 1.3rem;
+margin-bottom: 15px;
+color: #cbd5e1;
+}
+
+.card p {
+color: #94a3b8;
+line-height: 1.8;
+margin-bottom: 15px;
+}
+
+.card ul {
+list-style: none;
+margin: 15px 0;
+}
+
+.card li {
+padding: 10px 0;
+color: #cbd5e1;
+display: flex;
+align-items: center;
+gap: 10px;
+}
+
+.card li:before {
+content: "→";
+color: #22c55e;
+font-weight: bold;
+}
+
+.skills {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+gap: 15px;
+margin-top: 20px;
+}
+
+.skill-badge {
+background: rgba(59, 130, 246, 0.2);
+color: #3b82f6;
+padding: 10px 15px;
+border-radius: 8px;
+text-align: center;
+border: 1px solid rgba(59, 130, 246, 0.3);
+font-weight: 500;
+transition: all 0.3s;
+}
+
+.skill-badge:hover {
+background: rgba(59, 130, 246, 0.3);
+border-color: rgba(59, 130, 246, 0.6);
+}
+
+.footer {
+text-align: center;
+margin-top: 40px;
+color: #64748b;
+padding-bottom: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<h2>🚀 Monitor</h2>
+<a href="/dashboard">Dashboard</a>
+<a href="/metrics">Metrics</a>
+<a href="/servers">Servers</a>
+<a href="/logs">Logs</a>
+<a href="/projects">Projects</a>
+<a href="/about" class="active">About</a>
+</div>
+
+<div class="main">
+<div class="header">
+<h1>👋 About Me</h1>
+<p style="color: #94a3b8; font-size: 1.1rem;">Aspiring DevOps Engineer & Cloud Specialist</p>
+</div>
+
+<div class="content">
+
+<div class="card">
+<h3>🎯 Who I Am</h3>
 <p>
-I build cloud-native applications using Docker, AWS, and CI/CD pipelines.
+I'm Trevor Vaughan, a passionate DevOps engineer with a strong focus on infrastructure automation, cloud deployment, and system monitoring. I specialize in building scalable, reliable systems using modern DevOps practices and cloud technologies.
 </p>
-
 <p>
-This portfolio demonstrates real deployment, monitoring, and automation skills.
+My expertise lies in containerization, CI/CD pipelines, infrastructure as code, and real-time monitoring solutions. I'm committed to continuously learning and applying best practices in the DevOps space.
 </p>
+</div>
 
-<a href="/">⬅ Back</a>
+<div class="card">
+<h3>💼 What I Do</h3>
+<p>
+I design and implement cloud-native applications with a focus on:
+</p>
+<ul>
+<li>Containerized deployments using Docker and Kubernetes</li>
+<li>Automated CI/CD pipelines with GitHub Actions</li>
+<li>Infrastructure as Code using Terraform and CloudFormation</li>
+<li>Real-time monitoring and logging solutions</li>
+<li>AWS and cloud platform expertise</li>
+<li>System performance optimization and scaling</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>🛠️ Technical Skills</h3>
+<div class="skills">
+<div class="skill-badge">Docker</div>
+<div class="skill-badge">Kubernetes</div>
+<div class="skill-badge">AWS</div>
+<div class="skill-badge">Terraform</div>
+<div class="skill-badge">CI/CD</div>
+<div class="skill-badge">Python</div>
+<div class="skill-badge">Linux</div>
+<div class="skill-badge">Git</div>
+</div>
+</div>
+
+<div class="card">
+<h3>🚀 Current Focus</h3>
+<p>
+I'm actively developing this DevOps monitoring platform to demonstrate my capabilities in:
+</p>
+<ul>
+<li>Building production-grade applications</li>
+<li>Creating intuitive monitoring dashboards</li>
+<li>Implementing automated deployment pipelines</li>
+<li>System reliability and performance tracking</li>
+<li>Full-stack DevOps solutions</li>
+</ul>
+</div>
+
+<div class="footer">
+DevOps Monitoring Platform • Built with passion for infrastructure excellence
+</div>
+
+</div>
+
+</div>
+
 </body>
+</html>

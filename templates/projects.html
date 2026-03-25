@@ -1,17 +1,233 @@
-<body style="background:#020617; color:white; font-family:Arial; text-align:center; padding:50px;">
-<h1>Projects</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projects • DevOps Platform</title>
 
-<h3>🚀 DevOps Portfolio App</h3>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+font-family: 'Inter', sans-serif;
+background: #020617;
+color: #e2e8f0;
+display: flex;
+}
+
+.sidebar {
+width: 260px;
+height: 100vh;
+background: rgba(255,255,255,0.02);
+backdrop-filter: blur(12px);
+padding: 30px 20px;
+border-right: 1px solid rgba(255,255,255,0.08);
+position: fixed;
+left: 0;
+overflow-y: auto;
+}
+
+.sidebar h2 {
+margin-bottom: 35px;
+font-size: 1.3rem;
+background: linear-gradient(90deg, #22c55e, #3b82f6);
+-webkit-background-clip: text;
+background-clip: text;
+color: transparent;
+}
+
+.sidebar a {
+display: flex;
+align-items: center;
+margin: 12px 0;
+padding: 12px 15px;
+transition: all 0.3s;
+border-radius: 10px;
+color: #94a3b8;
+text-decoration: none;
+font-size: 0.95rem;
+}
+
+.sidebar a:hover, .sidebar a.active {
+background: rgba(59, 130, 246, 0.2);
+color: #3b82f6;
+transform: translateX(5px);
+}
+
+.main {
+flex: 1;
+margin-left: 260px;
+padding: 30px;
+overflow-y: auto;
+max-height: 100vh;
+}
+
+.header {
+backdrop-filter: blur(12px);
+background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.8));
+padding: 25px;
+border-radius: 15px;
+border: 1px solid rgba(255,255,255,0.1);
+margin-bottom: 30px;
+}
+
+.header h1 {
+font-size: 1.8rem;
+}
+
+.grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+gap: 25px;
+margin-top: 25px;
+}
+
+.project-card {
+background: linear-gradient(135deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0.8));
+padding: 30px;
+border-radius: 15px;
+border: 1px solid rgba(255,255,255,0.08);
+overflow: hidden;
+backdrop-filter: blur(10px);
+transition: all 0.3s ease;
+}
+
+.project-card:hover {
+transform: translateY(-8px);
+box-shadow: 0 15px 40px rgba(59, 130, 246, 0.15);
+border-color: rgba(255,255,255,0.15);
+}
+
+.project-card h3 {
+font-size: 1.3rem;
+margin-bottom: 15px;
+background: linear-gradient(90deg, #3b82f6, #22c55e);
+-webkit-background-clip: text;
+background-clip: text;
+color: transparent;
+}
+
+.project-card p {
+color: #94a3b8;
+margin-bottom: 20px;
+line-height: 1.6;
+}
+
+.features {
+list-style: none;
+margin: 20px 0;
+}
+
+.features li {
+padding: 10px 0;
+color: #cbd5e1;
+display: flex;
+align-items: center;
+gap: 10px;
+}
+
+.features li:before {
+content: "✓";
+color: #22c55e;
+font-weight: bold;
+}
+
+.status-badge {
+display: inline-block;
+background: rgba(34, 197, 94, 0.1);
+color: #22c55e;
+padding: 6px 12px;
+border-radius: 6px;
+font-size: 0.85rem;
+margin-top: 15px;
+border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.footer {
+text-align: center;
+margin-top: 40px;
+color: #64748b;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<h2>🚀 Monitor</h2>
+<a href="/dashboard">Dashboard</a>
+<a href="/metrics">Metrics</a>
+<a href="/servers">Servers</a>
+<a href="/logs">Logs</a>
+<a href="/projects" class="active">Projects</a>
+<a href="/about">About</a>
+</div>
+
+<div class="main">
+<div class="header">
+<h1>📁 Projects & Portfolio</h1>
+<p style="color: #94a3b8; margin-top: 10px;">Track your DevOps projects and deployments</p>
+</div>
+
+<div class="grid">
+
+<div class="project-card">
+<h3>🚀 DevOps Monitoring Platform</h3>
 <p>
-Dockerized Flask app deployed on AWS with CI/CD automation and live monitoring.
+A production-grade monitoring solution with real-time system metrics, live dashboards, and automated alerts.
 </p>
 
-<ul style="list-style:none;">
-<li>✔ Docker</li>
-<li>✔ AWS EC2</li>
-<li>✔ GitHub Actions</li>
-<li>✔ Monitoring endpoints</li>
+<ul class="features">
+<li>Real-time CPU, Memory & Disk monitoring</li>
+<li>Interactive metrics dashboard</li>
+<li>Live system log streaming</li>
+<li>Multi-server management</li>
 </ul>
 
-<a href="/">⬅ Back</a>
+<span class="status-badge">Active</span>
+</div>
+
+<div class="project-card">
+<h3>🐳 Docker Deployment Pipeline</h3>
+<p>
+Containerized Flask application with automated Docker builds, CI/CD integration, and Kubernetes deployment.
+</p>
+
+<ul class="features">
+<li>Dockerfile optimization</li>
+<li>GitHub Actions CI/CD</li>
+<li>AWS EC2 deployment</li>
+<li>Auto-scaling configuration</li>
+</ul>
+
+<span class="status-badge">Active</span>
+</div>
+
+<div class="project-card">
+<h3>☁️ AWS Infrastructure as Code</h3>
+<p>
+Infrastructure automation using Terraform and CloudFormation for consistent, reproducible environments.
+</p>
+
+<ul class="features">
+<li>VPC configuration</li>
+<li>Load balancing setup</li>
+<li>RDS database setup</li>
+<li>Security group management</li>
+</ul>
+
+<span class="status-badge">In Progress</span>
+</div>
+
+</div>
+
+<div class="footer">
+DevOps Monitoring Platform • Projects Portfolio
+</div>
+
+</div>
+
 </body>
+</html>
