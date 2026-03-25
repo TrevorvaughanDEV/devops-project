@@ -67,13 +67,11 @@ def login():
         conn = sqlite3.connect("metrics.db")
         c = conn.cursor()
         c.execute("SELECT password FROM users WHERE username = ?", (username,))
-        result = c.fetchone()
+        user = c.fetchone()
         conn.close()
-        if user and check_password_hash(result[0], password):
+        
+        if user and check_password_hash(user[0], password):
             session["user"] = username
-
-        
-        
             return redirect(url_for("dashboard"))
         else:
             return render_template("login.html", error="Invalid credentials")
