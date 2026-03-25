@@ -1,0 +1,56 @@
+<html>
+<head>
+<title>Logs</title>
+<style>
+body { background:#0f172a; color:white; font-family:monospace; }
+.container { padding:30px; }
+
+.log-box {
+background: black;
+padding:20px;
+height:400px;
+overflow-y:auto;
+border-radius:10px;
+}
+
+.log {
+margin-bottom:5px;
+}
+
+.info { color:#22c55e; }
+.warn { color:#facc15; }
+.error { color:#ef4444; }
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>📜 Live Logs</h1>
+
+<div class="log-box" id="logs"></div>
+
+</div>
+
+<script>
+function addLog(message, type) {
+const logBox = document.getElementById("logs");
+const log = document.createElement("div");
+
+log.className = "log " + type;
+log.innerText = "[" + new Date().toLocaleTimeString() + "] " + message;
+
+logBox.appendChild(log);
+logBox.scrollTop = logBox.scrollHeight;
+}
+
+// Fake live logs
+setInterval(() => {
+const types = ["info", "warn", "error"];
+const msgs = ["CPU spike detected", "Server response OK", "Memory high", "Disk stable"];
+
+addLog(msgs[Math.floor(Math.random()*msgs.length)], types[Math.floor(Math.random()*3)]);
+}, 1500);
+</script>
+
+</body>
+</html>

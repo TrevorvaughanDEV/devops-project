@@ -65,6 +65,18 @@ def init_db():
 
 init_db()
 
+@app.route("/metrics")
+def metrics():
+    return render_template("metrics.html")
+
+@app.route("/servers")
+def servers():
+    return render_template("servers.html")
+
+@app.route("/logs")
+def logs():
+    return render_template("logs.html")
+
 @app.route("/api/visits")
 def get_visits():
     import sqlite3
