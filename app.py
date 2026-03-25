@@ -49,14 +49,43 @@ def init_db():
             password TEXT
         )
     ''')
+
+    c.execute("""
+              CREATE TABLE IF NOT EXISTS visits (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  timestamp TEXT
+              )
+                """)
+              
     conn.commit()
     conn.close()
     # In a real application, you would set up your database here
+   
+
 
 init_db()
 
+@app.route("/api/visits")
+def get_visits():
+    conn = sqlite3.connect("metrics.db")
+    c = conn.cursor()
+    c.execute("SELECT * FROM visits")
+    visits = c.fetchall()
+    conn.close()
+    return jsonify({
+"total_visits": total 
+})
+
+
 @app.route("/")
 def home():
+    conn = sqlite3.connect("metrics.db")
+    c = conn.cursor()
+
+    c.execute("INSERT INTO visits (timestamp) VALUES (?)", (datetime.now().isoformat(),))
+    conn.commit()
+    conn.close()
+
     return render_template("index.html")
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -69,7 +98,7 @@ def login():
         c.execute("SELECT password FROM users WHERE username = ?", (username,))
         user = c.fetchone()
         conn.close()
-        
+
         if user and check_password_hash(user[0], password):
             session["user"] = username
             return redirect(url_for("dashboard"))
