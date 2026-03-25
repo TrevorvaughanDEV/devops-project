@@ -8,6 +8,41 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+    .bar {
+        width:100%;
+        height: 8px;
+        background: #1e293b;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-top: 5px;
+    }
+
+    .fill {
+        height: 100%;
+        background: #3b82f6;
+        width: 0%;
+        transition: width 0.5s ease, box-shadow 0.5s ease;
+
+    }
+
+    /* Colors */
+    .cpu-fill {
+        background: linear-gradient(90deg, #22c55e, #3b82f6);
+    }
+
+    .memory-fill {
+        background: linear-gradient(90deg, #3b82f6, #9333ea);
+    }
+
+    .disk-fill {
+        background: linear-gradient(90deg, #f59e0b, #ef4444);
+    }
+
+    /* Glow effect */
+    .fill.glow {
+        box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;       
+    }
+
 * { margin:0; padding:0; box-sizing:border-box; }
 
 body {
@@ -51,12 +86,12 @@ padding:25px;
 
 /* HEADER */
 .header {
-display:flex;
-justify-content:space-between;
-align-items:center;
+    backdrop-filter: blur(12px);
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-.header h1 { font-size:1.6rem; }
 
 .logout {
 background:#ef4444;
@@ -76,11 +111,31 @@ margin-top:20px;
 
 /* CARD */
 .card {
-background: rgba(255,255,255,0.04);
-border-radius:14px;
-padding:20px;
-backdrop-filter: blur(12px);
-box-shadow: 0 0 20px rgba(0,0,0,0.4);
+background: linear-gradient(145deg, #0f172a, #020617);
+padding: 20px;
+border-radius: 16px;
+position: relative;
+overflow: hidden;
+transition: 0.3s;
+}
+
+.card::before {
+content: "";
+position: absolute;
+inset: 0;
+border-radius: 16px;
+padding: 1px;
+background: linear-gradient(90deg, #22c55e, #3b82f6, #9333ea);
+-webkit-mask:
+linear-gradient(#000 0 0) content-box,
+linear-gradient(#000 0 0);
+-webkit-mask-composite: xor;
+mask-composite: exclude;
+}
+
+.card:hover {
+transform: translateY(-5px) scale(1.02);
+box-shadow: 0 0 30px rgba(34,197,94,0.3);
 }
 
 /* VALUE */
@@ -142,6 +197,24 @@ margin-top:30px;
 text-align:center;
 color:#64748b;
 }
+
+.live-dot {
+display:inline-block;
+width:10px;
+height:10px;
+background:#22c55e;
+border-radius:50%;
+margin-left:10px;
+animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+0% { transform: scale(1); opacity: 1; }
+50% { transform: scale(1.2); opacity: 0.7; }
+100% { transform: scale(1); opacity: 1; }
+}
+
+
 </style>
 </head>
 
@@ -160,7 +233,9 @@ color:#64748b;
 <div class="main">
 
 <div class="header">
-<h1>DevOps Monitoring</h1>
+<h1>DevOps Monitoring
+    <span class="live-dot"></span> Live  
+</h1>
 <a href="/logout" class="logout">Logout</a>
 </div>
 
@@ -189,21 +264,21 @@ Status: <span id="status">Checking...</span>
 <div class="card">
 <h3>CPU</h3>
 <div class="value" id="cpuText">--%</div>
-<div class="bar"><div id="cpuBar" class="fill"></div></div>
+<div class="bar"><div id="cpuBar" class="fill cpu-fill"></div></div>
 <canvas id="cpuChart"></canvas>
 </div>
 
 <div class="card">
 <h3>Memory</h3>
 <div class="value" id="memoryText">--%</div>
-<div class="bar"><div id="memoryBar" class="fill"></div></div>
+<div class="bar"><div id="memoryBar" class="fill memory-fill"></div></div>
 <canvas id="memoryChart"></canvas>
 </div>
 
 <div class="card">
 <h3>Disk</h3>
 <div class="value" id="diskText">--%</div>
-<div class="bar"><div id="diskBar" class="fill"></div></div>
+<div class="bar"><div id="diskBar" class="fill disk-fill"></div></div>
 <canvas id="diskChart"></canvas>
 </div>
 
@@ -236,6 +311,35 @@ DevOps Monitoring Platform • Live System
 </div>
 
 <script>
+function setColor(id, value) {  
+const el = document.getElementById(id);
+
+if (value > 80) el.style.color = "#ef4444";
+else if (value > 60) el.style.color = "#facc15";
+else el.style.color = "#22c55e";
+}
+
+function animateValue(id, start, end, duration) {
+    let startTimestamp = null;
+
+function step(timestamp) {
+if (!startTimestamp) startTimestamp = timestamp;
+
+const progress = timestamp - startTimestamp;
+const value = Math.floor(progress / duration * (end - start) + start);
+
+document.getElementById(id).innerText = value + "%";
+if (progress < duration) {
+window.requestAnimationFrame(step);
+} else {
+document.getElementById(id).innerText = end + "%";
+}
+}
+
+window.requestAnimationFrame(step);
+
+}
+
 function createChart(ctx, color) {
 return new Chart(ctx, {
 type: "line",
@@ -268,6 +372,19 @@ log.innerHTML = `[${time}] ${msg}<br>` + log.innerHTML;
 }
 
 function updateUI(data) {
+
+const cpuBar = document.getElementById("cpuBar");
+cpuBar.style.width = data.cpu + "%";
+cpuBar.classList.toggle("glow", data.cpu > 80);
+
+const memoryBar = document.getElementById("memoryBar");
+memoryBar.style.width = data.memory + "%";
+memoryBar.classList.toggle("glow", data.memory > 80);
+
+const diskBar = document.getElementById("diskBar");
+diskBar.style.width = data.disk + "%";
+diskBar.classList.toggle("glow", data.disk > 80);
+
 document.getElementById("cpuText").innerText = data.cpu + "%";
 document.getElementById("memoryText").innerText = data.memory + "%";
 document.getElementById("diskText").innerText = data.disk + "%";
@@ -311,7 +428,7 @@ diskChart.update();
 async function loadVisits() {
     const res = await fetch("/api/visits");
     const data = await res.json();
-    document.getElementById("visits").innerText = data.total_visits;
+    animateValue("visits", 0, data.total_visits, 800);
 }
 
 
@@ -324,13 +441,25 @@ const data = await res.json();
 updateUI(data);
 updateCharts(data);
 
+const shouldGlow = data.cpu > 80 || data.memory > 80 || data.disk > 80;
+
+document.querySelectorAll(".fill").forEach(el => {
+el.classList.toggle("glow", shouldGlow);
+});
+
+setColor("cpuText", data.cpu);
+setColor("memoryText", data.memory);
+setColor("diskText", data.disk);
+
 document.getElementById("serverName").innerText = "Server: " + data.server;
 
 } catch {
 document.getElementById("status").innerText = "Offline";
 }
-}
 
+
+
+}
 setInterval(() => {
     fetchData();
     loadVisits();
