@@ -24,7 +24,7 @@ jobs:
 
       - name: Push image
         run: 
-          docker push trevorvaughandev/devops-app:${{ github.sha }} .
+          docker push trevorvaughandev/devops-app:${{ github.sha }} 
 
       - name: Deploy to AWS
         uses: appleboy/ssh-action@v1.0.0
