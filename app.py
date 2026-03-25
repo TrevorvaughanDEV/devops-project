@@ -67,16 +67,25 @@ init_db()
 
 @app.route("/api/visits")
 def get_visits():
+    import sqlite3
+
     conn = sqlite3.connect("metrics.db")
     c = conn.cursor()
-    c.execute("SELECT * FROM visits")
-    visits = c.fetchall()
-    conn.close()
-    return jsonify({
-        "total_visits": total
-        
-})
 
+    c.execute("SELECT COUNT(*) FROM visits")
+    result = c.fetchone()   
+
+    conn.close()
+
+    total_visits = result[0] if result else 0
+
+    print("VISITS:", total_visits)
+    
+    return {
+        "total_visits": total_visits
+    }
+    
+   
 
 @app.route("/")
 def home():
