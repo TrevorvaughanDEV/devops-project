@@ -1,172 +1,187 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>DevOps Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevOps Monitoring Dashboard</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body {
-    margin:0;
-    font-family: Arial;
-    background:#020617;
-    color:white;
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
 }
 
-/* NAVBAR */
-.navbar {
-    display:flex;
-    justify-content:space-between;
-    padding:20px 50px;
+.container {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 20px;
 }
 
-.navbar a {
-    color:#cbd5f5;
-    text-decoration:none;
-    margin-left:20px;
-}
-
-/* TITLE */
 h1 {
-    text-align:center;
-    margin-top:40px;
+    text-align: center;
+    margin-bottom: 40px;
 }
 
-/* GRID */
 .grid {
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    margin-top:40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
 }
 
 .card {
-    background:rgba(255,255,255,0.05);
-    padding:30px;
-    margin:15px;
-    border-radius:15px;
-    width:220px;
-    text-align:center;
-    transition:0.3s;
-
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
 }
 
-.card:hover {
-    transform:scale(1.05);
-}
-
-/* VALUE */
 .value {
-    font-size:24px;
-    margin-top:10px;
+    font-size: 2rem;
+    margin-top: 10px;
+}
+
+.status {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 1.3rem;
+}
+
+.active { color: #22c55e; }
+.warning { color: #facc15; }
+.danger { color: #ef4444; }
+
+canvas {
+    margin-top: 15px;
 }
 </style>
-
 </head>
 
 <body>
 
-<div class="navbar">
-<div><b>Dashboard</b></div>
-<div>
-<a href="/">Home</a>
-<a href="/about">About</a>
-<a href="/projects">Projects</a>
-</div>
-</div>
+<div class="container">
+    <h1>🚀 DevOps Live Monitoring</h1>
 
-<h1>📊 Live DevOps Dashboard</h1>
+    <div class="grid">
+        <div class="card">
+            <h3>CPU Usage</h3>
+            <div id="cpu" class="value">--%</div>
+            <canvas id="cpuChart"></canvas>
+        </div>
 
-<div class="grid">
+        <div class="card">
+            <h3>Memory Usage</h3>
+            <div id="memory" class="value">--%</div>
+            <canvas id="memoryChart"></canvas>
+        </div>
 
-<div class="card">
-<h3>Status</h3>
-<div class="value" id="status">...</div>
-</div>
+        <div class="card">
+            <h3>Disk Usage</h3>
+            <div id="disk" class="value">--%</div>
+            <canvas id="diskChart"></canvas>
+        </div>
+    </div>
 
-<div class="card">
-<h3>Server</h3>
-<div class="value" id="server">...</div>
-</div>
-
-<div class="card">
-<h3>CPU</h3>
-<div class="value" id="cpu">...</div>
-</div>
-
-<div class="card">
-<h3>Uptime</h3>
-<div class="value" id="uptime">...</div>
-</div>
-
-<div class="card">
-<h3>Version</h3>
-<div class="value" id="version">...</div>
-</div>
-
-</div>
-
-<div style="width:80%; margin:auto; margin-top:40px;">
-    <canvas id="cpuChart"></canvas>
+    <div class="status">
+        Status: <span id="status">Checking...</span>
+    </div>
 </div>
 
 <script>
-console.log("working");
+const maxPoints = 20;
 
-let cpuData = [];
-let labels = [];
-
-const ctx = document.getElementById('cpuChart').getContext('2d');
-
-const chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: labels,
-        datasets: [{
-            label: 'CPU Usage %',
-            data: cpuData,
-            borderColor: '#38bdf8',
-            borderWidth: 2,
-            tension: 0.3
-        }]
-    },
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true,
-                max: 100
+function createChart(ctx, label, color) {
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: color,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    min: 0,
+                    max: 100
+                }
             }
         }
-    }
-});
-
-function loadData(){
- fetch("/status")
- .then(r=>r.json())
- .then(data=>{
-  
-  console.log(data);
-
-  document.getElementById("status").innerText = data.status;
-  document.getElementById("server").innerText = data.server;
-  document.getElementById("cpu").innerText = data.cpu + "%";
-  document.getElementById("uptime").innerText = data.uptime + "s";
-  document.getElementById("version").innerText = data.version;
-
-  const time = new Date().toLocaleTimeString();
-
-  labels.push(time);
-  cpuData.push(data.cpu);
-
-  if(labels.length > 10){
-    labels.shift();
-    cpuData.shift();
-  }
-
-  chart.update();
- });
+    });
 }
 
-loadData();
-setInterval(loadData, 3000);
+const cpuChart = createChart(document.getElementById('cpuChart'), 'CPU', '#3b82f6');
+const memoryChart = createChart(document.getElementById('memoryChart'), 'Memory', '#22c55e');
+const diskChart = createChart(document.getElementById('diskChart'), 'Disk', '#f97316');
+
+function updateChart(chart, value) {
+    const time = new Date().toLocaleTimeString();
+
+    chart.data.labels.push(time);
+    chart.data.datasets[0].data.push(value);
+
+    if (chart.data.labels.length > maxPoints) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+
+    chart.update();
+}
+
+function updateStatus(cpu) {
+    const statusEl = document.getElementById('status');
+
+    if (cpu < 50) {
+        statusEl.innerText = "Healthy";
+        statusEl.className = "active";
+    } else if (cpu < 80) {
+        statusEl.innerText = "Warning";
+        statusEl.className = "warning";
+    } else {
+        statusEl.innerText = "High Load";
+        statusEl.className = "danger";
+    }
+}
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/system_info');
+        const data = await res.json();
+
+        const cpu = data.cpu_usage;
+        const memory = data.memory_percent;
+        const disk = data.disk_percent;
+
+        document.getElementById('cpu').innerText = cpu + "%";
+        document.getElementById('memory').innerText = memory + "%";
+        document.getElementById('disk').innerText = disk + "%";
+
+        updateChart(cpuChart, cpu);
+        updateChart(memoryChart, memory);
+        updateChart(diskChart, disk);
+
+        updateStatus(cpu);
+
+    } catch (err) {
+        console.error(err);
+        const status = document.getElementById('status');
+        status.innerText = "Disconnected";
+        status.className = "danger";
+    }
+}
+
+// Run immediately
+loadStats();
+
+// Refresh every 3 seconds
+setInterval(loadStats, 3000);
 </script>
 
 </body>
