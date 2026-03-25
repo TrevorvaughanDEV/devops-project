@@ -1,11 +1,30 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request, redirect, session, url_for, Response
 import psutil 
+import json
+import time
 
 app = Flask(__name__)
+app.secret_key = "123456789"  # Change this to a random secret key in production
+
+USERNAME = "admin"
+PASSWORD = "manpoopa"
 
 @app.route("/")
 def home():
     return render_template("index.html")
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        
+        if username == USERNAME and password == PASSWORD:
+            session["logged_in"] = True
+            return redirect(url_for("dashboard"))
+        else:
+            return render_template("login.html", error="Invalid credentials")
+    
+    return render_template("login.html")
 
 @app.route("/projects")
 def projects():
@@ -13,7 +32,16 @@ def projects():
 
 @app.route("/dashboard")
 def dashboard():
+    if not session.get("user"):
+        return redirect(url_for("login"))
     return render_template("dashboard.html")
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("login"))
+
+    
 
 @app.route("/about")
 def about():
