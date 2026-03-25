@@ -3,6 +3,15 @@ import psutil
 import json
 import time
 
+from collections import deque
+
+history = {
+    "cpu": deque(maxlen=60),
+    "memory": deque(maxlen=60),
+    "disk": deque(maxlen=60)
+}
+
+
 app = Flask(__name__)
 app.secret_key = "123456789"  # Change this to a random secret key in production
 
@@ -49,19 +58,33 @@ def about():
 
 @app.route("/api/system_info")
 def system_info():
-    cpu_usage = psutil.cpu_percent(interval=1)
-    memory_info = psutil.virtual_memory()
-    disk_info = psutil.disk_usage('/')
+    cpu = psutil.cpu_percent(interval=1)
+    memory = psutil.virtual_memory().percent
+    disk = psutil.disk_usage('/').percent
     
+    history["cpu"].append(cpu)
+    history["memory"].append(memory)
+    history["disk"].append(disk)
+
+    alerts = []
+    if cpu > 80:
+        alerts.append("High CPU usage detected!")
+    if memory > 80:
+        alerts.append("High Memory usage detected!")
+
     return jsonify({
-        "cpu_usage": cpu_usage,
-        "memory_total": memory_info.total,
-        "memory_used": memory_info.used,
-        "memory_percent": memory_info.percent,
-        "disk_total": disk_info.total,
-        "disk_used": disk_info.used,
-        "disk_percent": disk_info.percent
+        "cpu": cpu,
+        "memory": memory,
+        "disk": disk,
+        "history": {
+            "cpu": list(history["cpu"]),
+            "memory": list(history["memory"]),
+            "disk": list(history["disk"])
+        },
+        "alerts": alerts
     })
+
+    
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
