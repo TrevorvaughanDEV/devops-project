@@ -8,41 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    .bar {
-        width:100%;
-        height: 8px;
-        background: #1e293b;
-        border-radius: 5px;
-        overflow: hidden;
-        margin-top: 5px;
-    }
-
-    .fill {
-        height: 100%;
-        background: #3b82f6;
-        width: 0%;
-        transition: width 0.5s ease, box-shadow 0.5s ease;
-
-    }
-
-    /* Colors */
-    .cpu-fill {
-        background: linear-gradient(90deg, #22c55e, #3b82f6);
-    }
-
-    .memory-fill {
-        background: linear-gradient(90deg, #3b82f6, #9333ea);
-    }
-
-    .disk-fill {
-        background: linear-gradient(90deg, #f59e0b, #ef4444);
-    }
-
-    /* Glow effect */
-    .fill.glow {
-        box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;       
-    }
-
 * { margin:0; padding:0; box-sizing:border-box; }
 
 body {
@@ -54,172 +19,303 @@ display: flex;
 
 /* SIDEBAR */
 .sidebar {
-width: 240px;
+width: 260px;
 height: 100vh;
-background: rgba(255,255,255,0.03);
+background: rgba(255,255,255,0.02);
 backdrop-filter: blur(12px);
-padding: 25px 15px;
-border-right: 1px solid rgba(255,255,255,0.05);
+padding: 30px 20px;
+border-right: 1px solid rgba(255,255,255,0.08);
+position: fixed;
+left: 0;
+overflow-y: auto;
 }
 
-.sidebar h2 { margin-bottom: 30px; }
+.sidebar h2 { 
+margin-bottom: 35px;
+font-size: 1.3rem;
+background: linear-gradient(90deg, #22c55e, #3b82f6);
+-webkit-background-clip: text;
+background-clip: text;
+color: transparent;
+}
 
 .sidebar a {
-display:block;
-margin: 10px 0;
-padding: 8px 10px;
-transition: background 0.2s;
-margin-bottom:10px;
-border-radius:8px;
-color:#94a3b8;
-text-decoration:none;
+display: flex;
+align-items: center;
+margin: 12px 0;
+padding: 12px 15px;
+transition: all 0.3s;
+margin-bottom: 8px;
+border-radius: 10px;
+color: #94a3b8;
+text-decoration: none;
+font-size: 0.95rem;
 }
 
 .sidebar a:hover {
-background: rgba(255,255,255,0.08);  ;
+background: rgba(255,255,255,0.1);
+color: #e2e8f0;
+transform: translateX(5px);
+}
+
+.sidebar a.active {
+background: rgba(59, 130, 246, 0.2);
+color: #3b82f6;
+border-left: 3px solid #3b82f6;
+padding-left: 12px;
 }
 
 /* MAIN */
 .main {
-flex:1;
-padding:25px;
+flex: 1;
+margin-left: 260px;
+padding: 30px;
+overflow-y: auto;
+max-height: 100vh;
 }
 
 .status {
-margin-top:15px;
+margin-top: 15px;
 margin-bottom: 20px;
 }
 
 /* HEADER */
 .header {
-    backdrop-filter: blur(12px);
-    background: rgba(255,255,255,0.1);
-    padding: 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+backdrop-filter: blur(12px);
+background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.8));
+padding: 25px;
+border-radius: 15px;
+border: 1px solid rgba(255,255,255,0.1);
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 30px;
 }
 
+.header h1 {
+font-size: 1.8rem;
+}
 
 .logout {
-background:#ef4444;
-padding:8px 14px;
-border-radius:8px;
-color:white;
-text-decoration:none;
+background: linear-gradient(135deg, #ef4444, #dc2626);
+padding: 10px 20px;
+border-radius: 10px;
+color: white;
+text-decoration: none;
+font-weight: 500;
+transition: all 0.3s;
+border: none;
+cursor: pointer;
+}
+
+.logout:hover {
+transform: translateY(-2px);
+box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3);
 }
 
 /* GRID */
 .grid {
-display:grid;
-grid-template-columns: repeat(3, 1fr);
-gap:25px;
-margin-top:20px;
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+gap: 25px;
+margin-top: 25px;
 }
 
 /* CARD */
 .card {
-background: linear-gradient(145deg, #0f172a, #020617);
-padding: 20px;
+background: linear-gradient(135deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0.8));
+padding: 25px;
 border-radius: 15px;
-border: 1px solid rgba(255,255,255,0.05);
+border: 1px solid rgba(255,255,255,0.08);
 position: relative;
 overflow: hidden;
 backdrop-filter: blur(10px);
-transition: transform 0.3s ease, box-shadow 0.3s ease;
+transition: all 0.3s ease;
 }
 
 .card::before {
 content: "";
 position: absolute;
 inset: 0;
-border-radius: 16px;
+border-radius: 15px;
 padding: 1px;
-background: linear-gradient(90deg, #22c55e, #3b82f6, #9333ea);
+background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
 -webkit-mask:
+linear-gradient(#000 0 0) content-box,
+linear-gradient(#000 0 0);
+mask:
 linear-gradient(#000 0 0) content-box,
 linear-gradient(#000 0 0);
 -webkit-mask-composite: xor;
 mask-composite: exclude;
+opacity: 0;
+transition: opacity 0.3s ease;
 }
 
 .card:hover {
-transform: translateY(-5px);
-box-shadow: 0 0 20px rgba(0,0,0,0.4);
+transform: translateY(-8px);
+box-shadow: 0 15px 40px rgba(59, 130, 246, 0.15);
+border-color: rgba(255,255,255,0.15);
+}
+
+.card:hover::before {
+opacity: 1;
+}
+
+.card h3 {
+font-size: 1rem;
+margin-bottom: 15px;
+color: #cbd5e1;
+font-weight: 600;
 }
 
 /* VALUE */
 .value {
-font-size:1.8rem;
-margin-top:10px;
+font-size: 2rem;
+margin-top: 12px;
+background-clip: text;
+font-weight: 700;
+background: linear-gradient(90deg, #22c55e, #3b82f6);
+-webkit-background-clip: text;
+color: transparent;
 }
 
 /* STATUS */
 .status {
-margin-top:10px;
-font-weight:bold;
+margin-top: 15px;
+font-weight: 600;
 }
 
 /* ALERTS */
 .alerts {
-margin-top:20px;
-color:#f87171;
+margin-top: 15px;
+color: #f87171;
+font-size: 0.9rem;
 }
 
 /* LOG PANEL */
 .logs {
-margin-top:20px;
-max-height:200px;
-overflow:auto;
-font-family: monospace;
-font-size:0.85rem;
-background:#020617;
-padding:10px;
-border-radius:10px;
+margin-top: 25px;
+max-height: 250px;
+overflow-y: auto;
+font-family: 'Monaco', monospace;
+font-size: 0.8rem;
+background: rgba(0, 0, 0, 0.4);
+padding: 15px;
+border-radius: 12px;
+border: 1px solid rgba(255,255,255,0.05);
+}
+
+.logs::-webkit-scrollbar {
+width: 6px;
+}
+
+.logs::-webkit-scrollbar-thumb {
+background: rgba(255, 255, 255, 0.2);
+border-radius: 3px;
 }
 
 /* SERVER CARD */
 .server {
-margin-top:20px;
-display:grid;
-grid-template-columns: repeat(2,1fr);
-gap:20px;
+margin-top: 25px;
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+gap: 25px;
 }
 
 /* PROGRESS BAR */
 .bar {
-height:8px;
-background:#1e293b;
-border-radius:5px;
-overflow:hidden;
-margin-top:5px;
+height: 10px;
+background: #1e293b;
+border-radius: 8px;
+overflow: hidden;
+margin-top: 12px;
+position: relative;
 }
 
 .fill {
-height:100%;
-background:#3b82f6;
-width:0%;
+height: 100%;
+background: #3b82f6;
+width: 0%;
+transition: width 0.5s ease, box-shadow 0.5s ease;
+}
+
+/* Colors */
+.cpu-fill {
+background: linear-gradient(90deg, #22c55e, #10b981);
+}
+
+.memory-fill {
+background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+.disk-fill {
+background: linear-gradient(90deg, #f59e0b, #f97316);
+}
+
+/* Glow effect */
+.fill.glow {
+box-shadow: 0 0 15px currentColor, 0 0 30px currentColor;       
 }
 
 /* FOOTER */
 .footer {
-margin-top:30px;
-text-align:center;
-color:#64748b;
+margin-top: 40px;
+text-align: center;
+color: #64748b;
+font-size: 0.9rem;
 }
 
 .live-dot {
-display:inline-block;
-width:10px;
-height:10px;
-background:#22c55e;
-border-radius:50%;
-margin-left:10px;
+display: inline-block;
+width: 10px;
+height: 10px;
+background: #22c55e;
+border-radius: 50%;
+margin-left: 10px;
 animation: pulse 2s infinite;
+box-shadow: 0 0 10px #22c55e;
 }
 
 @keyframes pulse {
 0% { transform: scale(1); opacity: 1; }
-50% { transform: scale(1.2); opacity: 0.7; }
+50% { transform: scale(1.15); opacity: 0.8; }
 100% { transform: scale(1); opacity: 1; }
+}
+
+/* CONTROLS */
+.server-select-group {
+display: flex;
+gap: 20px;
+align-items: center;
+flex-wrap: wrap;
+margin-bottom: 25px;
+padding: 20px;
+background: rgba(255,255,255,0.03);
+border-radius: 12px;
+border: 1px solid rgba(255,255,255,0.05);
+}
+
+#serverSelect {
+background: rgba(30, 41, 59, 0.8);
+color: #e2e8f0;
+border: 1px solid rgba(255,255,255,0.1);
+padding: 10px 15px;
+border-radius: 8px;
+font-family: 'Inter', sans-serif;
+font-size: 0.95rem;
+cursor: pointer;
+transition: all 0.3s;
+}
+
+#serverSelect:hover {
+border-color: rgba(255,255,255,0.2);
+background: rgba(30, 41, 59, 1);
+}
+
+#serverSelect option {
+background: #0f172a;
+color: #e2e8f0;
 }
 
 
@@ -231,33 +327,38 @@ animation: pulse 2s infinite;
 <!-- SIDEBAR -->
 <div class="sidebar">
 <h2>🚀 Monitor</h2>
-<a href="/">Dashboard</a>
+<a href="/dashboard" class="active">Dashboard</a>
 <a href="/metrics">Metrics</a>
 <a href="/servers">Servers</a>
 <a href="/logs">Logs</a>
+<a href="/projects">Projects</a>
+<a href="/about">About</a>
 </div>
 
 <!-- MAIN -->
 <div class="main">
 
 <div class="header">
+<div>
 <h1>DevOps Monitoring
     <span class="live-dot"></span> Live  
 </h1>
+</div>
 <a href="/logout" class="logout">Logout</a>
 </div>
 
-<div style="margin-top: 20px; display:flex; gap:25px; align-items:center; flex-wrap:wrap;">
-    <select id="serverSelect" style="background: rgba(255,255,255,0.04); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.05); padding: 8px; border-radius: 8px;">
-        <option value="server1">Production</option>
-        <option value="server2">Staging</option>
+<div class="server-select-group">
+    <label style="color: #cbd5e1;">Select Server:</label>
+    <select id="serverSelect">
+        <option value="server1">🟢 Production</option>
+        <option value="server2">🟡 Staging</option>
     </select>
 
-    <h3 id="serverName">Server: Production</h3>
+    <h3 id="serverName" style="margin: 0; color: #cbd5e1;">Server: Production</h3>
 </div>
 
 <div class="status">
-Status: <span id="status">Checking...</span>
+<strong>Status:</strong> <span id="status">Checking...</span>
 </div>
 
 <!-- METRICS -->
@@ -380,6 +481,9 @@ log.innerHTML = `[${time}] ${msg}<br>` + log.innerHTML;
 }
 
 function updateUI(data) {
+if (!data || typeof data.cpu === 'undefined' || typeof data.memory === 'undefined' || typeof data.disk === 'undefined') {
+return;
+}
 
 const cpuBar = document.getElementById("cpuBar");
 cpuBar.style.width = data.cpu + "%";
@@ -393,13 +497,9 @@ const diskBar = document.getElementById("diskBar");
 diskBar.style.width = data.disk + "%";
 diskBar.classList.toggle("glow", data.disk > 80);
 
-document.getElementById("cpuText").innerText = data.cpu + "%";
-document.getElementById("memoryText").innerText = data.memory + "%";
-document.getElementById("diskText").innerText = data.disk + "%";
-
-document.getElementById("cpuBar").style.width = data.cpu + "%";
-document.getElementById("memoryBar").style.width = data.memory + "%";
-document.getElementById("diskBar").style.width = data.disk + "%";
+document.getElementById("cpuText").innerText = data.cpu.toFixed(1) + "%";
+document.getElementById("memoryText").innerText = data.memory.toFixed(1) + "%";
+document.getElementById("diskText").innerText = data.disk.toFixed(1) + "%";
 
 const status = document.getElementById("status");
 
@@ -414,12 +514,15 @@ status.innerText = "Critical";
 status.style.color = "#ef4444";
 }
 
-document.getElementById("alerts").innerHTML = data.alerts.join("<br>");
+document.getElementById("alerts").innerHTML = (data.alerts && data.alerts.length > 0) ? data.alerts.join("<br>") : "No alerts";
 
-addLog("CPU: " + data.cpu + "% | Memory: " + data.memory + "%");
+addLog("CPU: " + data.cpu.toFixed(1) + "% | Memory: " + data.memory.toFixed(1) + "%");
 }
 
 function updateCharts(data) {
+if (!data || !data.history) {
+return;
+}
 cpuChart.data.labels = data.history.cpu.map((_, i) => i);
 memoryChart.data.labels = data.history.memory.map((_, i) => i);
 diskChart.data.labels = data.history.disk.map((_, i) => i);
@@ -444,7 +547,16 @@ async function fetchData() {
 try {
 const server = document.getElementById("serverSelect").value;
 const res = await fetch(`/api/system_info?server=${server}`);
+
+if (!res.ok) {
+throw new Error(`API error: ${res.status}`);
+}
+
 const data = await res.json();
+
+if (!data || typeof data.cpu === 'undefined' || typeof data.memory === 'undefined' || typeof data.disk === 'undefined') {
+throw new Error("Invalid data received from API");
+}
 
 updateUI(data);
 updateCharts(data);
@@ -461,7 +573,9 @@ setColor("diskText", data.disk);
 
 document.getElementById("serverName").innerText = "Server: " + data.server;
 
-} catch {
+} catch (error) {
+console.error("Data fetch error:", error);
+addLog("Error: " + error.message);
 document.getElementById("status").innerText = "Offline";
 }
 
