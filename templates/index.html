@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Trevor Vaughan | DevOps Engineer</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    color: white;
+    background: radial-gradient(circle at top, #0f172a, #020617);
+    overflow-x: hidden;
+}
+
+/* PARTICLES */
+canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: -1;
+}
+
+/* NAVBAR */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 50px;
+}
+
+.navbar a {
+    color: #cbd5f5;
+    margin-left: 20px;
+    text-decoration: none;
+}
+
+.navbar a:hover {
+    color: #38bdf8;
+}
+
+/* HERO */
+.hero {
+    text-align: center;
+    padding: 120px 20px;
+}
+
+.hero h1 {
+    font-size: 60px;
+    background: linear-gradient(90deg, #38bdf8, #6366f1);
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+.typing {
+    font-size: 22px;
+    color: #94a3b8;
+}
+
+/* CARDS */
+.cards {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: rgba(255,255,255,0.05);
+    padding: 25px;
+    margin: 15px;
+    border-radius: 15px;
+    width: 220px;
+    transition: 0.3s;
+}
+
+.card:hover {
+    transform: scale(1.1);
+}
+
+/* STATUS */
+.status-box {
+    background: rgba(0,0,0,0.4);
+    padding: 25px;
+    border-radius: 15px;
+    display: inline-block;
+    margin-top: 20px;
+}
+
+/* SECTION */
+.section {
+    text-align: center;
+    padding: 60px;
+}
+
+.btn {
+    margin-top: 20px;
+    padding: 12px 25px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #38bdf8, #6366f1);
+    color: white;
+    text-decoration: none;
+    display: inline-block;
+    transition: 0.3s;
+}
+
+.btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px #38bdf8;
+}
+</style>
+
+</head>
+
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="navbar">
+<div><b>Trevor Vaughan</b></div>
+<div>
+<a href="/">Home</a>
+<a href="/about">About</a>
+<a href="/projects">Projects</a>
+</div>
+</div>
+
+<div class="hero">
+<h1>DevOps Engineer 🚀</h1>
+<div class="typing" id="typing"></div>
+<p style="margin-top:20px;">
+Status: <span id="statusDot">🟡 Checking...</span>
+</p>
+
+ <a href="/dashboard" class="btn">Open Dashboard</a>
+</div>
+
+<div class="section">
+<h2>⚡ Skills</h2>
+<h2>⚙️ Tech Stack</h2>
+<p>
+Docker • AWS EC2 • Flask • CI/CD • Linux • Networking
+</p>
+<div class="cards">
+<div class="card">Docker</div>
+<div class="card">AWS</div>
+<div class="card">CI/CD</div>
+<div class="card">Linux</div>
+</div>
+</div>
+
+<div class="section">
+<h2>📦 Live System</h2>
+
+<div class="status-box">
+<p id="status">Loading...</p>
+<p id="server"></p>
+<p id="cpu"></p>
+<p id="uptime"></p>
+<p id="version"></p>
+</div>
+</div>
+
+<script>
+
+/* TYPING */
+const text="Building scalable cloud systems...";
+let i=0;
+function type(){
+ if(i<text.length){
+  document.getElementById("typing").innerHTML+=text.charAt(i);
+  i++;
+  setTimeout(type,50);
+ }
+}
+type();
+
+/* STATUS */
+fetch("/status")
+.then(r=>r.json())
+.then(data=>{
+ document.getElementById("status").innerText="Status: "+data.status;
+ document.getElementById("server").innerText="Server: "+data.server;
+ document.getElementById("cpu").innerText="CPU: "+data.cpu+"%";
+ document.getElementById("uptime").innerText="Uptime: "+data.uptime+"s";
+ document.getElementById("version").innerText="Version: "+data.version;
+});
+
+/* PARTICLES */
+const canvas=document.getElementById("bg");
+const ctx=canvas.getContext("2d");
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+let particles=[];
+for(let i=0;i<80;i++){
+ particles.push({
+  x:Math.random()*canvas.width,
+  y:Math.random()*canvas.height,
+  vx:(Math.random()-0.5),
+  vy:(Math.random()-0.5)
+ });
+}
+
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ particles.forEach(p=>{
+  p.x+=p.vx;
+  p.y+=p.vy;
+  ctx.fillStyle="white";
+  ctx.fillRect(p.x,p.y,2,2);
+ });
+ requestAnimationFrame(draw);
+}
+draw();
+
+fetch("/status")
+.then(r=>r.json())
+.then(data=>{
+  const dot = document.getElementById("statusDot");
+  dot.innerText = data.status === "running" ? "🟢 Live" : "🔴 Down";
+});
+</script>
+
+<div style="text-align:center; margin-top:40px;">
+<a href="https://github.com/trevorvaughandev/devops-project" target="_blank" class="btn"></a>
+My Github 
+</a>
+</div>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>DevOps Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body {
+    margin:0;
+    font-family: Arial;
+    background:#020617;
+    color:white;
+}
+
+/* NAVBAR */
+.navbar {
+    display:flex;
+    justify-content:space-between;
+    padding:20px 50px;
+}
+
+.navbar a {
+    color:#cbd5f5;
+    text-decoration:none;
+    margin-left:20px;
+}
+
+/* TITLE */
+h1 {
+    text-align:center;
+    margin-top:40px;
+}
+
+/* GRID */
+.grid {
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-top:40px;
+}
+
+.card {
+    background:rgba(255,255,255,0.05);
+    padding:30px;
+    margin:15px;
+    border-radius:15px;
+    width:220px;
+    text-align:center;
+    transition:0.3s;
+
+}
+
+.card:hover {
+    transform:scale(1.05);
+}
+
+/* VALUE */
+.value {
+    font-size:24px;
+    margin-top:10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="navbar">
+<div><b>Dashboard</b></div>
+<div>
+<a href="/">Home</a>
+<a href="/about">About</a>
+<a href="/projects">Projects</a>
+</div>
+</div>
+
+<h1>📊 Live DevOps Dashboard</h1>
+
+<div class="grid">
+
+<div class="card">
+<h3>Status</h3>
+<div class="value" id="status">...</div>
+</div>
+
+<div class="card">
+<h3>Server</h3>
+<div class="value" id="server">...</div>
+</div>
+
+<div class="card">
+<h3>CPU</h3>
+<div class="value" id="cpu">...</div>
+</div>
+
+<div class="card">
+<h3>Uptime</h3>
+<div class="value" id="uptime">...</div>
+</div>
+
+<div class="card">
+<h3>Version</h3>
+<div class="value" id="version">...</div>
+</div>
+
+</div>
+
+<div style="width:80%; margin:auto; margin-top:40px;">
+    <canvas id="cpuChart"></canvas>
+</div>
+
+<script>
+console.log("working");
+
+let cpuData = [];
+let labels = [];
+
+const ctx = document.getElementById('cpuChart').getContext('2d');
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'CPU Usage %',
+            data: cpuData,
+            borderColor: '#38bdf8',
+            borderWidth: 2,
+            tension: 0.3
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100
+            }
+        }
+    }
+});
+
+function loadData(){
+ fetch("/status")
+ .then(r=>r.json())
+ .then(data=>{
+  
+  console.log(data);
+
+  document.getElementById("status").innerText = data.status;
+  document.getElementById("server").innerText = data.server;
+  document.getElementById("cpu").innerText = data.cpu + "%";
+  document.getElementById("uptime").innerText = data.uptime + "s";
+  document.getElementById("version").innerText = data.version;
+
+  const time = new Date().toLocaleTimeString();
+
+  labels.push(time);
+  cpuData.push(data.cpu);
+
+  if(labels.length > 10){
+    labels.shift();
+    cpuData.shift();
+  }
+
+  chart.update();
+ });
+}
+
+loadData();
+setInterval(loadData, 3000);
+</script>
+
+</body>
+</html>
