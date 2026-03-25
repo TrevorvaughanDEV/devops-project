@@ -9,9 +9,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from collections import deque
 
 history = {
-    "cpu": deque(maxlen=60),
-    "memory": deque(maxlen=60),
-    "disk": deque(maxlen=60)
+    "cpu": deque(maxlen=20),
+    "memory": deque(maxlen=20),
+    "disk": deque(maxlen=20)
 }
 
 servers = {
@@ -176,34 +176,40 @@ def about():
 
 @app.route("/api/system_info")
 def system_info():
-    server_id = request.args.get("server", "server1")
+    try:
+        server_id = request.args.get("server", "server1")
 
-    cpu = psutil.cpu_percent(interval=None)
-    memory = psutil.virtual_memory().percent
-    disk = psutil.disk_usage('/').percent
-    
-    history["cpu"].append(cpu)
-    history["memory"].append(memory)
-    history["disk"].append(disk)
+        cpu = psutil.cpu_percent(interval=None)
+        memory = psutil.virtual_memory().percent
+        disk = psutil.disk_usage('/').percent
 
-    alerts = []
-    if cpu > 80:
-        alerts.append("High CPU usage detected!")
-    if memory > 80:
-        alerts.append("High Memory usage detected!")
+        history["cpu"].append(cpu)
+        history["memory"].append(memory)
+        history["disk"].append(disk)
 
-    return jsonify({
-        "server": servers[server_id]["name"],
-        "cpu": cpu,
-        "memory": memory,
-        "disk": disk,
-        "history": {
+        alerts = []
+        if cpu > 80:
+            alerts.append("High CPU usage detected!")
+        if memory > 80:
+         alerts.append("High Memory usage detected!")
+
+        return jsonify({
+            "server": servers.get(server_id, {}).get("name", "Unknown"),
+            "cpu": cpu,
+            "memory": memory,
+            "disk": disk,
+            "history": {
             "cpu": list(history["cpu"]),
             "memory": list(history["memory"]),
             "disk": list(history["disk"])
-        },
-        "alerts": alerts
-    })
+            },
+             "alerts": alerts
+})  
+
+    except Exception as e:  
+     print("ERROR:", e)
+     return jsonify({"error": str(e)}), 500
+
 
     
 
