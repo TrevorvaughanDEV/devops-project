@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN pip install flask gunicorn
+RUN pip install flask gunicorn psutil
 
 EXPOSE 5000
 
