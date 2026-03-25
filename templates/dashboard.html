@@ -1,61 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DevOps Monitoring Dashboard</title>
-
+<title>Elite DevOps Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: #0f172a;
-    color: #e2e8f0;
+margin: 0;
+font-family: 'Inter', sans-serif;
+background: #020617;
+color: white;
 }
 
 .container {
-    max-width: 1100px;
-    margin: 40px auto;
-    padding: 20px;
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 40px;
+padding: 30px;
 }
 
 .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 25px;
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 25px;
 }
 
 .card {
-    background: #1e293b;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+background: rgba(255,255,255,0.04);
+border-radius: 16px;
+padding: 20px;
+backdrop-filter: blur(12px);
 }
 
-.value {
-    font-size: 2rem;
-    margin-top: 10px;
+.alerts {
+margin-top: 20px;
+color: #f87171;
+font-weight: bold;
 }
 
-.status {
-    text-align: center;
-    margin-top: 30px;
-    font-size: 1.3rem;
-}
-
-.active { color: #22c55e; }
-.warning { color: #facc15; }
-.danger { color: #ef4444; }
-
-canvas {
-    margin-top: 15px;
+h1 {
+margin-bottom: 10px;
 }
 </style>
 </head>
@@ -63,125 +44,79 @@ canvas {
 <body>
 
 <div class="container">
-    <h1>🚀 DevOps Live Monitoring</h1>
+<h1>🚀 DevOps Intelligence Panel</h1>
+<div>Status: <span id="status">Checking...</span></div>
 
-    <div class="grid">
-        <div class="card">
-            <h3>CPU Usage</h3>
-            <div id="cpu" class="value">--%</div>
-            <canvas id="cpuChart"></canvas>
-        </div>
+<div class="grid">
+<div class="card">
+<h3>CPU</h3>
+<canvas id="cpuChart"></canvas>
+</div>
 
-        <div class="card">
-            <h3>Memory Usage</h3>
-            <div id="memory" class="value">--%</div>
-            <canvas id="memoryChart"></canvas>
-        </div>
+<div class="card">
+<h3>Memory</h3>
+<canvas id="memoryChart"></canvas>
+</div>
 
-        <div class="card">
-            <h3>Disk Usage</h3>
-            <div id="disk" class="value">--%</div>
-            <canvas id="diskChart"></canvas>
-        </div>
-    </div>
+<div class="card">
+<h3>Disk</h3>
+<canvas id="diskChart"></canvas>
+</div>
+</div>
 
-    <div class="status">
-        Status: <span id="status">Checking...</span>
-    </div>
+<div class="alerts" id="alerts"></div>
 </div>
 
 <script>
-const maxPoints = 20;
-
-function createChart(ctx, label, color) {
-    return new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: label,
-                data: [],
-                borderColor: color,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    min: 0,
-                    max: 100
-                }
-            }
-        }
-    });
+function createChart(ctx, color) {
+return new Chart(ctx, {
+type: "line",
+data: {
+labels: [],
+datasets: [{
+data: [],
+borderColor: color,
+tension: 0.3
+}]
+},
+options: {
+plugins: { legend: { display: false }},
+scales: {
+x: { display: false },
+y: { min: 0, max: 100 }
+}
+}
+});
 }
 
-const cpuChart = createChart(document.getElementById('cpuChart'), 'CPU', '#3b82f6');
-const memoryChart = createChart(document.getElementById('memoryChart'), 'Memory', '#22c55e');
-const diskChart = createChart(document.getElementById('diskChart'), 'Disk', '#f97316');
+const cpuChart = createChart(document.getElementById("cpuChart"), "#22c55e");
+const memoryChart = createChart(document.getElementById("memoryChart"), "#3b82f6");
+const diskChart = createChart(document.getElementById("diskChart"), "#f59e0b");
 
-function updateChart(chart, value) {
-    const time = new Date().toLocaleTimeString();
+async function loadData() {
+try {
+const res = await fetch("/api/system_info");
+const data = await res.json();
 
-    chart.data.labels.push(time);
-    chart.data.datasets[0].data.push(value);
+document.getElementById("status").innerText = "Active";
 
-    if (chart.data.labels.length > maxPoints) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-    }
+cpuChart.data.datasets[0].data = data.history.cpu;
+memoryChart.data.datasets[0].data = data.history.memory;
+diskChart.data.datasets[0].data = data.history.disk;
 
-    chart.update();
+cpuChart.update();
+memoryChart.update();
+diskChart.update();
+
+document.getElementById("alerts").innerHTML = data.alerts.join("<br>");
+
+} catch {
+document.getElementById("status").innerText = "Offline";
+}
 }
 
-function updateStatus(cpu) {
-    const statusEl = document.getElementById('status');
-
-    if (cpu < 50) {
-        statusEl.innerText = "Healthy";
-        statusEl.className = "active";
-    } else if (cpu < 80) {
-        statusEl.innerText = "Warning";
-        statusEl.className = "warning";
-    } else {
-        statusEl.innerText = "High Load";
-        statusEl.className = "danger";
-    }
-}
-
-async function loadStats() {
-    try {
-        const res = await fetch('/api/system_info');
-        const data = await res.json();
-
-        const cpu = data.cpu_usage;
-        const memory = data.memory_percent;
-        const disk = data.disk_percent;
-
-        document.getElementById('cpu').innerText = cpu + "%";
-        document.getElementById('memory').innerText = memory + "%";
-        document.getElementById('disk').innerText = disk + "%";
-
-        updateChart(cpuChart, cpu);
-        updateChart(memoryChart, memory);
-        updateChart(diskChart, disk);
-
-        updateStatus(cpu);
-
-    } catch (err) {
-        console.error(err);
-        const status = document.getElementById('status');
-        status.innerText = "Disconnected";
-        status.className = "danger";
-    }
-}
-
-// Run immediately
-loadStats();
-
-// Refresh every 3 seconds
-setInterval(loadStats, 3000);
+setInterval(loadData, 2000);
+loadData();
 </script>
 
 </body>
