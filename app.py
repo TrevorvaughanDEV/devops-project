@@ -11,6 +11,12 @@ history = {
     "disk": deque(maxlen=60)
 }
 
+servers = {
+    "server1": {"name": "Production"},
+    "server2": {"name": "Staging"}
+
+}
+
 
 app = Flask(__name__)
 app.secret_key = "123456789"  # Change this to a random secret key in production
@@ -58,7 +64,9 @@ def about():
 
 @app.route("/api/system_info")
 def system_info():
-    cpu = psutil.cpu_percent(interval=1)
+    server_id = request.args.get("server", "server1")
+
+    cpu = psutil.cpu_percent(interval=None)
     memory = psutil.virtual_memory().percent
     disk = psutil.disk_usage('/').percent
     
@@ -73,6 +81,7 @@ def system_info():
         alerts.append("High Memory usage detected!")
 
     return jsonify({
+        "server": servers[server_id]["name"],
         "cpu": cpu,
         "memory": memory,
         "disk": disk,
