@@ -1,65 +1,148 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Login</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login • DevOps Platform</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+
 <style>
 body {
-background: #0f172a;
+margin: 0;
+font-family: 'Inter', sans-serif;
+background: radial-gradient(circle at top, #0f172a, #020617);
 color: white;
-font-family: Arial;
 display: flex;
 justify-content: center;
 align-items: center;
 height: 100vh;
 }
 
-.box {
-background: #1e293b;
-padding: 40px;
-border-radius: 12px;
-width: 300px;
+/* CONTAINER */
+.container {
+width: 100%;
+max-width: 400px;
+}
+
+/* CARD */
+.card {
+background: rgba(255,255,255,0.05);
+padding: 35px;
+border-radius: 16px;
+backdrop-filter: blur(12px);
+box-shadow: 0 0 40px rgba(0,0,0,0.5);
+}
+
+/* TITLE */
+h2 {
+text-align: center;
+margin-bottom: 25px;
+}
+
+/* INPUT */
+.input-group {
+position: relative;
+margin-bottom: 20px;
 }
 
 input {
 width: 100%;
-padding: 10px;
-margin: 10px 0;
+padding: 12px;
+border-radius: 8px;
 border: none;
-border-radius: 6px;
+outline: none;
+background: #020617;
+color: white;
 }
 
+/* SHOW PASSWORD */
+.toggle {
+position: absolute;
+right: 10px;
+top: 50%;
+transform: translateY(-50%);
+cursor: pointer;
+font-size: 0.9rem;
+color: #94a3b8;
+}
+
+/* BUTTON */
 button {
 width: 100%;
-padding: 10px;
-background: #22c55e;
+padding: 12px;
+background: linear-gradient(90deg, #22c55e, #3b82f6);
 border: none;
-border-radius: 6px;
+border-radius: 10px;
 color: white;
+font-weight: 500;
 cursor: pointer;
 }
 
+/* ERROR */
 .error {
-color: red;
-font-size: 0.9rem;
+color: #ef4444;
+margin-bottom: 10px;
+text-align: center;
+}
+
+/* FOOTER */
+.footer {
+margin-top: 15px;
+text-align: center;
+font-size: 0.85rem;
+color: #64748b;
 }
 </style>
 </head>
 
 <body>
 
-<div class="box">
-<h2>Login</h2>
+<div class="container">
+<div class="card">
+
+<h2>🚀 DevOps Login</h2>
 
 {% if error %}
 <div class="error">{{ error }}</div>
 {% endif %}
 
 <form method="POST">
+
+<div class="input-group">
 <input type="text" name="username" placeholder="Username" required>
-<input type="password" name="password" placeholder="Password" required>
-<button type="submit">Login</button>
-</form>
 </div>
+
+<div class="input-group">
+<input type="password" id="password" name="password" placeholder="Password" required>
+<span class="toggle" onclick="togglePassword()">Show</span>
+</div>
+
+<button type="submit">Login</button>
+
+</form>
+
+<div class="footer">
+Secure access to monitoring dashboard
+</div>
+
+</div>
+</div>
+
+<script>
+function togglePassword() {
+const input = document.getElementById("password");
+const toggle = document.querySelector(".toggle");
+
+if (input.type === "password") {
+input.type = "text";
+toggle.innerText = "Hide";
+} else {
+input.type = "password";
+toggle.innerText = "Show";
+}
+}
+</script>
 
 </body>
 </html>
