@@ -19,7 +19,7 @@ def login():
         password = request.form.get("password")
         
         if username == USERNAME and password == PASSWORD:
-            session["logged_in"] = True
+            session["user"] = username
             return redirect(url_for("dashboard"))
         else:
             return render_template("login.html", error="Invalid credentials")
@@ -32,7 +32,7 @@ def projects():
 
 @app.route("/dashboard")
 def dashboard():
-    if not session.get("user"):
+    if "user" not in session:
         return redirect(url_for("login"))
     return render_template("dashboard.html")
 
