@@ -1,228 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Trevor Vaughan | DevOps Engineer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevOps Monitoring Platform</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
 
 <style>
 body {
-    margin: 0;
-    font-family: Arial;
-    color: white;
-    background: radial-gradient(circle at top, #0f172a, #020617);
-    overflow-x: hidden;
+margin: 0;
+font-family: 'Inter', sans-serif;
+background: linear-gradient(135deg, #0f172a, #020617);
+color: #e2e8f0;
+overflow-x: hidden;
 }
 
-/* PARTICLES */
-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: -1;
+/* NAV */
+nav {
+display: flex;
+justify-content: space-between;
+padding: 20px 40px;
 }
 
-/* NAVBAR */
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    padding: 20px 50px;
+.logo {
+font-weight: 700;
+font-size: 1.2rem;
 }
 
-.navbar a {
-    color: #cbd5f5;
-    margin-left: 20px;
-    text-decoration: none;
-}
-
-.navbar a:hover {
-    color: #38bdf8;
+.nav-btn {
+background: #3b82f6;
+padding: 10px 18px;
+border-radius: 8px;
+color: white;
+text-decoration: none;
 }
 
 /* HERO */
 .hero {
-    text-align: center;
-    padding: 120px 20px;
+text-align: center;
+margin-top: 100px;
+padding: 0 20px;
 }
 
 .hero h1 {
-    font-size: 60px;
-    background: linear-gradient(90deg, #38bdf8, #6366f1);
-    -webkit-background-clip: text;
-    color: transparent;
+font-size: 3rem;
+background: linear-gradient(90deg, #3b82f6, #22c55e);
+-webkit-background-clip: text;
+color: transparent;
 }
 
-.typing {
-    font-size: 22px;
-    color: #94a3b8;
+.hero p {
+margin-top: 20px;
+font-size: 1.2rem;
+color: #94a3b8;
 }
 
-/* CARDS */
-.cards {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
+.cta {
+margin-top: 30px;
+}
+
+.cta a {
+background: #22c55e;
+padding: 14px 28px;
+border-radius: 10px;
+color: white;
+text-decoration: none;
+font-weight: 500;
+}
+
+/* FEATURES */
+.features {
+margin-top: 100px;
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+gap: 25px;
+padding: 0 40px;
 }
 
 .card {
-    background: rgba(255,255,255,0.05);
-    padding: 25px;
-    margin: 15px;
-    border-radius: 15px;
-    width: 220px;
-    transition: 0.3s;
+background: rgba(30, 41, 59, 0.6);
+backdrop-filter: blur(10px);
+padding: 25px;
+border-radius: 12px;
+transition: 0.3s;
 }
 
 .card:hover {
-    transform: scale(1.1);
+transform: translateY(-5px);
 }
 
-/* STATUS */
-.status-box {
-    background: rgba(0,0,0,0.4);
-    padding: 25px;
-    border-radius: 15px;
-    display: inline-block;
-    margin-top: 20px;
+.card h3 {
+margin-bottom: 10px;
 }
 
-/* SECTION */
-.section {
-    text-align: center;
-    padding: 60px;
-}
-
-.btn {
-    margin-top: 20px;
-    padding: 12px 25px;
-    border-radius: 8px;
-    background: linear-gradient(90deg, #38bdf8, #6366f1);
-    color: white;
-    text-decoration: none;
-    display: inline-block;
-    transition: 0.3s;
-}
-
-.btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 20px #38bdf8;
+/* FOOTER */
+.footer {
+text-align: center;
+margin: 100px 0 40px;
+color: #64748b;
 }
 </style>
-
 </head>
 
 <body>
 
-<canvas id="bg"></canvas>
+<nav>
+<div class="logo">🚀 DevOps Platform</div>
+<a class="nav-btn" href="/dashboard">Dashboard</a>
+</nav>
 
-<div class="navbar">
-<div><b>Trevor Vaughan</b></div>
-<div>
-<a href="/">Home</a>
-<a href="/about">About</a>
-<a href="/projects">Projects</a>
-</div>
-</div>
+<section class="hero">
+<h1>Real-Time Infrastructure Monitoring</h1>
+<p>Track CPU, memory, and system health with live analytics powered by your own DevOps pipeline.</p>
 
-<div class="hero">
-<h1>DevOps Engineer 🚀</h1>
-<div class="typing" id="typing"></div>
-<p style="margin-top:20px;">
-Status: <span id="statusDot">🟡 Checking...</span>
-</p>
-
- <a href="/dashboard" class="btn">Open Dashboard</a>
+<div class="cta">
+<a href="/dashboard">View Live Dashboard</a>
 </div>
+</section>
 
-<div class="section">
-<h2>⚡ Skills</h2>
-<h2>⚙️ Tech Stack</h2>
-<p>
-Docker • AWS EC2 • Flask • CI/CD • Linux • Networking
-</p>
-<div class="cards">
-<div class="card">Docker</div>
-<div class="card">AWS</div>
-<div class="card">CI/CD</div>
-<div class="card">Linux</div>
-</div>
+<section class="features">
+<div class="card">
+<h3>⚡ Live Metrics</h3>
+<p>Real-time CPU, memory, and disk monitoring updated instantly from your server.</p>
 </div>
 
-<div class="section">
-<h2>📦 Live System</h2>
-
-<div class="status-box">
-<p id="status">Loading...</p>
-<p id="server"></p>
-<p id="cpu"></p>
-<p id="uptime"></p>
-<p id="version"></p>
-</div>
+<div class="card">
+<h3>🐳 Containerized</h3>
+<p>Fully Dockerized deployment running on AWS with CI/CD automation.</p>
 </div>
 
-<script>
-
-/* TYPING */
-const text="Building scalable cloud systems...";
-let i=0;
-function type(){
- if(i<text.length){
-  document.getElementById("typing").innerHTML+=text.charAt(i);
-  i++;
-  setTimeout(type,50);
- }
-}
-type();
-
-/* STATUS */
-fetch("/status")
-.then(r=>r.json())
-.then(data=>{
- document.getElementById("status").innerText="Status: "+data.status;
- document.getElementById("server").innerText="Server: "+data.server;
- document.getElementById("cpu").innerText="CPU: "+data.cpu+"%";
- document.getElementById("uptime").innerText="Uptime: "+data.uptime+"s";
- document.getElementById("version").innerText="Version: "+data.version;
-});
-
-/* PARTICLES */
-const canvas=document.getElementById("bg");
-const ctx=canvas.getContext("2d");
-canvas.width=window.innerWidth;
-canvas.height=window.innerHeight;
-
-let particles=[];
-for(let i=0;i<80;i++){
- particles.push({
-  x:Math.random()*canvas.width,
-  y:Math.random()*canvas.height,
-  vx:(Math.random()-0.5),
-  vy:(Math.random()-0.5)
- });
-}
-
-function draw(){
- ctx.clearRect(0,0,canvas.width,canvas.height);
- particles.forEach(p=>{
-  p.x+=p.vx;
-  p.y+=p.vy;
-  ctx.fillStyle="white";
-  ctx.fillRect(p.x,p.y,2,2);
- });
- requestAnimationFrame(draw);
-}
-draw();
-
-fetch("/status")
-.then(r=>r.json())
-.then(data=>{
-  const dot = document.getElementById("statusDot");
-  dot.innerText = data.status === "running" ? "🟢 Live" : "🔴 Down";
-});
-</script>
-
-<div style="text-align:center; margin-top:40px;">
-<a href="https://github.com/trevorvaughandev/devops-project" target="_blank" class="btn"></a>
-My Github 
-</a>
+<div class="card">
+<h3>📊 Analytics</h3>
+<p>Visual dashboards powered by modern frontend technologies.</p>
 </div>
+
+<div class="card">
+<h3>🔒 Production Ready</h3>
+<p>Deployed using industry-standard tools: Docker, GitHub Actions, and AWS.</p>
+</div>
+</section>
+
+<div class="footer">
+Built by Trevor Vaughan • DevOps Project
+</div>
+
 </body>
 </html>
