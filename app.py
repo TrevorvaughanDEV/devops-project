@@ -73,7 +73,8 @@ def get_visits():
     visits = c.fetchall()
     conn.close()
     return jsonify({
-"total_visits": total 
+        "total_visits": total
+        
 })
 
 
