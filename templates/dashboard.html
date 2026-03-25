@@ -181,6 +181,12 @@ Status: <span id="status">Checking...</span>
 <div class="grid">
 
 <div class="card">
+<h3>Visitors</h3>
+<div class="value" id="visits">Loading...</div>
+</div>
+
+
+<div class="card">
 <h3>CPU</h3>
 <div class="value" id="cpuText">--%</div>
 <div class="bar"><div id="cpuBar" class="fill"></div></div>
@@ -302,6 +308,13 @@ memoryChart.update();
 diskChart.update();
 }
 
+async function loadVisits() {
+    const res = await fetch("/api/visits");
+    const data = await res.json();
+    document.getElementById("visits").innerText = data.total_visits;
+}
+
+
 async function fetchData() {
 try {
 const server = document.getElementById("serverSelect").value;
@@ -318,8 +331,10 @@ document.getElementById("status").innerText = "Offline";
 }
 }
 
-setInterval(fetchData, 2000);
-fetchData();
+setInterval(() => {
+    fetchData();
+    loadVisits();
+}, 2000);
 </script>
 
 </body>
