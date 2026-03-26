@@ -314,18 +314,35 @@ DevOps Monitoring Platform • Built by Trevor Vaughan • <a href="/about" styl
 async function loadPreview() {
 try {
 const res = await fetch("/api/system_info?server=server1");
+
+if (!res.ok) {
+throw new Error(`Server error: ${res.status}`);
+}
+
 const data = await res.json();
+
+if (!data.cpu || !data.memory || !data.disk) {
+throw new Error("Invalid response data");
+}
 
 document.getElementById("cpuPreview").style.width = data.cpu + "%";
 document.getElementById("memoryPreview").style.width = data.memory + "%";
 document.getElementById("diskPreview").style.width = data.disk + "%";
+
 } catch (error) {
 console.error("Failed to load preview:", error);
+// Silently fail - show placeholder stats
+document.getElementById("cpuPreview").style.width = "0%";
+document.getElementById("memoryPreview").style.width = "0%";
+document.getElementById("diskPreview").style.width = "0%";
 }
 }
 
+// Load preview every 3 seconds
 setInterval(loadPreview, 3000);
-loadPreview();
+
+// Load on page load
+window.addEventListener("load", loadPreview);
 </script>
 
 </body>
