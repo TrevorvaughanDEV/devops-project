@@ -89,9 +89,9 @@ def get_visits():
 
     print("VISITS:", total_visits)
     
-    return {
+    return jsonify({
         "total_visits": total_visits
-    }
+    })
     
    
 
@@ -191,16 +191,16 @@ def system_info():
 
         return jsonify({
             "server": servers.get(server_id, {}).get("name", "Unknown"),
-            "cpu": cpu,
-            "memory": memory,
-            "disk": disk,
+            "cpu": float(cpu),
+            "memory": float(memory),
+            "disk": float(disk),
             "history": {
-            "cpu": list(history["cpu"]),
-            "memory": list(history["memory"]),
-            "disk": list(history["disk"])
+                "cpu": [float(x) for x in history["cpu"]],
+                "memory": [float(x) for x in history["memory"]],
+                "disk": [float(x) for x in history["disk"]]
             },
-             "alerts": alerts
-})  
+            "alerts": alerts
+        })  
 
     except Exception as e:  
      print("ERROR:", e)
