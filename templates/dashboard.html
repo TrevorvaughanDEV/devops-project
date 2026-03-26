@@ -549,13 +549,13 @@ const server = document.getElementById("serverSelect").value;
 const res = await fetch(`/api/system_info?server=${server}`);
 
 if (!res.ok) {
-throw new Error(`API error: ${res.status}`);
+throw new Error(`API error: ${res.status} ${res.statusText}`);
 }
 
 const data = await res.json();
 
 if (!data || typeof data.cpu === 'undefined' || typeof data.memory === 'undefined' || typeof data.disk === 'undefined') {
-throw new Error("Invalid data received from API");
+throw new Error("Invalid response data structure");
 }
 
 updateUI(data);
@@ -572,20 +572,34 @@ setColor("memoryText", data.memory);
 setColor("diskText", data.disk);
 
 document.getElementById("serverName").innerText = "Server: " + data.server;
+document.getElementById("status").innerText = "Healthy";
+document.getElementById("status").style.color = "#22c55e";
 
 } catch (error) {
-console.error("Data fetch error:", error);
-addLog("Error: " + error.message);
+console.error("API Error:", error);
+addLog("❌ Error: " + error.message);
 document.getElementById("status").innerText = "Offline";
+document.getElementById("status").style.color = "#ef4444";
+console.error("Full error details:", {error: error.message, stack: error.stack});
 }
-
-
-
 }
 setInterval(() => {
     fetchData();
     loadVisits();
 }, 2000);
+
+// Handle server selection change
+document.getElementById("serverSelect").addEventListener("change", function() {
+    const serverName = this.options[this.selectedIndex].text;
+    document.getElementById("serverName").innerText = "Server: " + serverName.split(" ")[1];
+    fetchData();
+});
+
+// Initial load
+window.addEventListener("load", function() {
+    fetchData();
+    loadVisits();
+});
 </script>
 
 </body>
