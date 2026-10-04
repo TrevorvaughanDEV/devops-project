@@ -1,170 +1,117 @@
-# 🚀 DevOps Monitoring Platform
+# DevOps Monitor
 
-A production-grade real-time system monitoring dashboard built with Flask, featuring live CPU/Memory/Disk metrics, multi-server management, and secure authentication.
+[![CI/CD](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/deploy.yml/badge.svg)](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/deploy.yml)
 
-## ✨ Features
+A server-monitoring dashboard I built and run myself at **[trevorvaughan.dev](https://trevorvaughan.dev)**.
+It reports live CPU, memory and disk usage from the host, behind a login, and every push to
+`main` is linted, tested, security-scanned, containerised and rolled out to AWS with an
+automatic rollback if the new version fails its health check.
 
-- **Real-Time Monitoring** - Live CPU, Memory, and Disk usage tracking
-- **Interactive Dashboard** - Beautiful charts and metrics visualization
-- **Multi-Server Support** - Monitor Production and Staging environments
-- **User Authentication** - Secure login/signup system
-- **Live Logs** - Real-time system event streaming
-- **Responsive Design** - Works on desktop and tablet
-- **Professional UI** - Modern glassmorphism design with smooth animations
+The app itself is deliberately small. The point of the project is everything around it:
+the pipeline, the container, the server, TLS, and making deploys safe.
 
-## 🛠️ Installation & Setup
+## Architecture
 
-### Prerequisites
-- Python 3.8 or higher
-- pip (Python package manager)
+```mermaid
+flowchart LR
+    dev[git push to main] --> gha
 
-### 1. Clone the Repository
+    subgraph gha[GitHub Actions]
+        direction TB
+        t[Lint · unit tests · pip-audit] --> b[Docker build + smoke test]
+        b --> p[Push image to Docker Hub<br/>tagged with commit SHA]
+    end
+
+    p --> ssh[SSH deploy job]
+
+    subgraph ec2[AWS EC2 · Ubuntu]
+        direction TB
+        nginx[Nginx<br/>TLS via Let's Encrypt] --> app[Gunicorn + Flask<br/>container :5000]
+        app --> vol[(Docker volume<br/>SQLite)]
+    end
+
+    ssh -->|pull · run · /healthz · rollback| app
+    user[Browser] -->|HTTPS 443| nginx
+```
+
+## The pipeline
+
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs three jobs:
+
+| Job | What it does | Why |
+|---|---|---|
+| **test** | `ruff` lint and format check, `pytest`, `pip-audit` on pinned dependencies | Broken or vulnerable code never reaches the image |
+| **build** | Builds the image, starts it, and polls `/healthz` before pushing | Catches images that build but don't boot |
+| **deploy** | Pulls the SHA-tagged image on EC2, swaps the container, waits for `/healthz`, rolls back to the previous image on failure | A bad release can't take the site down |
+
+Pull requests run `test` and `build` only, so nothing is deployed until it is merged.
+
+## Security decisions
+
+- **No secret in code.** The image sets `APP_ENV=production`, and in production the app
+  refuses to start without `SECRET_KEY`. The key comes from a GitHub Actions secret.
+- **Passwords** are salted and hashed with Werkzeug; queries are parameterised.
+- **Session cookies** are `HttpOnly`, `SameSite=Lax` and `Secure` in production.
+- **Sign-up is disabled** on the public instance (`ALLOW_SIGNUP=false`).
+- **Non-root container**, with `/app/data` as its only writable path.
+- **Dependencies are pinned** and scanned for known CVEs on every push.
+- **Nginx** redirects HTTP to HTTPS and sets HSTS and other security headers.
+
+## Run it locally
+
 ```bash
-git clone <your-repo-url>
-cd devops-project
+python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+python app.py                                         # http://localhost:5000
 ```
 
-### 2. Create Virtual Environment
+Or with Docker:
+
 ```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
+export SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
+docker compose up --build
 ```
 
-### 3. Install Dependencies
+## Tests
+
 ```bash
-pip install -r requirements.txt
+pytest -v
+ruff check . && ruff format --check .
 ```
 
-### 4. Run the Application
-```bash
-python app.py
+The tests cover the health check, the metrics API, alert thresholds, sign-up and login,
+password hashing, protected routes, and that production fails fast without a secret key.
+
+## API
+
+| Endpoint | Auth | Returns |
+|---|---|---|
+| `GET /healthz` | – | `{"status": "ok"}`, used by Docker and the deploy job |
+| `GET /api/system_info?server=server1` | – | CPU, memory, disk, recent history and alerts |
+| `GET /api/visits` | – | Total page visits |
+
+## Project layout
+
+```
+app.py                  Flask app
+templates/              Dashboard pages
+tests/                  Unit tests
+Dockerfile              Production image (Gunicorn, non-root, health check)
+docker-compose.yml      Local run
+.github/workflows/      CI/CD pipeline
+docs/deployment.md      Server setup, secrets, backups
+docs/nginx.conf         Reverse proxy and TLS config
 ```
 
-The app will be available at `http://localhost:5000`
+## What's next
 
-### 5. Create Your First Account
-- Go to http://localhost:5000
-- Click "Sign Up"
-- Create a new username and password
-- Login to access the dashboard
+- [ ] Provision the EC2 instance, security group and DNS with **Terraform** instead of by hand
+- [ ] Ship metrics to **Prometheus** and graph them in **Grafana**
+- [ ] A lightweight agent so the dashboard can watch more than one real server
+- [ ] Move from SQLite to **PostgreSQL** on RDS
+- [ ] Container image scanning with Trivy
 
-## 📁 Project Structure
-```
-devops-project/
-├── app.py                 # Flask backend
-├── requirements.txt       # Python dependencies
-├── Dockerfile            # Docker configuration
-├── README.md             # This file
-└── templates/            # HTML templates
-    ├── index.html        # Homepage
-    ├── login.html        # Login page
-    ├── signup.html       # Registration page
-    ├── dashboard.html    # Main monitoring dashboard
-    ├── metrics.html      # Detailed metrics
-    ├── servers.html      # Server management
-    ├── logs.html         # System logs
-    ├── projects.html     # Portfolio showcase
-    └── about.html        # About page
-```
+## Author
 
-## 🚀 Deployment
-
-### Local Development
-**Windows:**
-```bash
-# Double-click: start_dev.bat
-# Or run in PowerShell:
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-```
-
-Visit: `http://localhost:5000`
-
-### Docker Deployment (Local)
-```bash
-docker-compose up -d
-# Visit: http://localhost:5000
-```
-
-### 🌐 Production Deployment to trevorvaughan.dev
-
-**Complete Guide:** See [DEPLOYMENT.md](DEPLOYMENT.md)  
-**Pre-Deployment Checklist:** See [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)
-
-#### Quick Steps:
-1. **On your Linux server:**
-   ```bash
-   cd /home/ubuntu
-   git clone <your-repo-url> devops-project
-   cd devops-project
-   cp .env.example .env
-   nano .env  # Set SECRET_KEY
-   ```
-
-2. **Get SSL Certificate:**
-   ```bash
-   sudo certbot certonly --standalone -d trevorvaughan.dev -d www.trevorvaughan.dev
-   ```
-
-3. **Deploy:**
-   ```bash
-   chmod +x deploy.sh
-   ./deploy.sh
-   ```
-
-4. **Access:** `https://trevorvaughan.dev` ✅
-
-#### OR Manual Deployment:
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-**Result:** Your monitoring platform will be live at `https://trevorvaughan.dev` 🎉
-
-## 🔒 Security Recommendations
-
-1. Change the default secret key in production
-2. Use environment variables for credentials
-3. Enable HTTPS
-4. Implement rate limiting
-5. Add CSRF protection
-6. Use a proper database (PostgreSQL recommended)
-7. Regular security audits
-
-## 📊 API Endpoints
-
-- `GET /` - Homepage
-- `GET /dashboard` - Main monitoring dashboard (requires login)
-- `POST /login` - User login
-- `POST /signup` - User registration
-- `GET /logout` - Logout
-- `GET /metrics` - Metrics page
-- `GET /servers` - Server management
-- `GET /logs` - Live logs
-- `GET /api/system_info?server=<id>` - System metrics API
-- `GET /api/visits` - Visit counter API
-
-## 🎯 Next Steps
-
-- [ ] Kubernetes deployment
-- [ ] AWS infrastructure setup
-- [ ] GitHub Actions CI/CD pipeline
-- [ ] Database migration to PostgreSQL
-- [ ] Email alerts for critical metrics
-- [ ] Mobile app version
-- [ ] Advanced analytics
-
-## 👨‍💻 Author
-
-Trevor Vaughan - DevOps Engineer
-
-## 📝 License
-
-MIT License
+**Trevor Vaughan**, Networking Technology student at TU Dublin, working towards cloud,
+DevOps and security engineering. [trevorvaughan.dev](https://trevorvaughan.dev)
