@@ -98,16 +98,26 @@ jobs:
           script: |
             set -euo pipefail
             NAME=devops-monitor
+            VOLUME=devops-monitor-data
 
-            if [ -z "${APP_SECRET_KEY:-}" ]; then
-              echo "APP_SECRET_KEY secret is not set in GitHub; refusing to deploy"; exit 1
+            # Session key: use the GitHub secret if one is set; otherwise generate one
+            # on the server the first time and keep it there (readable only by ubuntu).
+            SECRET_FILE="$HOME/.devops-monitor-secret"
+            if [ -n "${APP_SECRET_KEY:-}" ]; then
+              KEY="$APP_SECRET_KEY"
+            else
+              if [ ! -s "$SECRET_FILE" ]; then
+                (umask 077; openssl rand -hex 32 > "$SECRET_FILE")
+                echo "Generated a new session key in $SECRET_FILE"
+              fi
+              KEY=$(cat "$SECRET_FILE")
             fi
 
             run_container() {
               sudo docker run -d --name "$NAME" -p 5000:5000 --restart unless-stopped \
-                -e SECRET_KEY="$APP_SECRET_KEY" \
+                -e SECRET_KEY="$KEY" \
                 -e ALLOW_SIGNUP=false \
-                -v devops-monitor-data:/app/data \
+                -v "$VOLUME":/app/data \
                 "$1"
             }
 
@@ -120,11 +130,30 @@ jobs:
             }
 
             sudo docker pull "$NEW_IMAGE"
-            PREV_IMAGE=$(sudo docker inspect --format '{{.Config.Image}}' "$NAME" 2>/dev/null || true)
 
-            # Remove only this app's container (and any old unnamed one holding port 5000)
+            # The container currently serving the site: the named one, or an older
+            # unnamed one from before this pipeline existed.
+            OLD=$(sudo docker ps -aq --filter "name=^${NAME}$")
+            [ -z "$OLD" ] && OLD=$(sudo docker ps -q --filter "publish=5000" | head -n1)
+            PREV_IMAGE=""
+            [ -n "$OLD" ] && PREV_IMAGE=$(sudo docker inspect --format '{{.Config.Image}}' "$OLD")
+
+            # One-time migration: older versions kept the database inside the container
+            # at /app/metrics.db. Copy it into the volume so existing accounts survive.
+            if ! sudo docker run --rm -v "$VOLUME":/data alpine test -s /data/metrics.db; then
+              TMP=$(mktemp -d)
+              if [ -n "$OLD" ] && sudo docker cp "$OLD":/app/metrics.db "$TMP/metrics.db" 2>/dev/null; then
+                sudo docker run --rm -v "$VOLUME":/data -v "$TMP":/src alpine \
+                  sh -c 'cp /src/metrics.db /data/metrics.db && chown -R 1000:1000 /data'
+                echo "Migrated existing database into volume $VOLUME"
+              else
+                sudo docker run --rm -v "$VOLUME":/data alpine chown -R 1000:1000 /data
+              fi
+              sudo rm -rf "$TMP"
+            fi
+
+            [ -n "$OLD" ] && sudo docker rm -f "$OLD"
             sudo docker rm -f "$NAME" 2>/dev/null || true
-            sudo docker ps -q --filter "publish=5000" | xargs -r sudo docker rm -f
 
             run_container "$NEW_IMAGE"
 

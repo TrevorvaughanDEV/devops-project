@@ -36,7 +36,7 @@ Set these under **Settings → Secrets and variables → Actions**:
 | `DOCKER_USERNAME` / `DOCKER_PASSWORD` | Docker Hub login (use an access token, not your password) |
 | `AWS_HOST` | Public IP or DNS name of the EC2 instance |
 | `AWS_SSH_KEY` | Private key for the `ubuntu` user |
-| `APP_SECRET_KEY` | Flask session key: `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `APP_SECRET_KEY` | *Optional.* Flask session key. If it isn't set, the first deploy generates one on the server in `~/.devops-monitor-secret` and reuses it |
 
 Optionally add a `production` environment with required reviewers to make deploys
 need a manual approval.
@@ -46,14 +46,15 @@ need a manual approval.
 1. Pulls the new image tagged with the commit SHA.
 2. Records the image currently running, then removes only the app's own container.
 3. Starts the new container with the `devops-monitor-data` volume, so users and visit
-   counts survive deploys.
+   counts survive deploys. On the first deploy, the database from the old container
+   (which kept it at `/app/metrics.db`) is copied into the volume, so existing accounts carry over.
 4. Polls `/healthz` for up to a minute. If it never passes, the new container is removed
    and the previous image is started again, and the workflow fails.
 
 ## Creating your own account
 
-Sign-up is off in production. To create an account, temporarily run the container with
-`-e ALLOW_SIGNUP=true`, sign up, then redeploy.
+Sign-up is off in production. Existing accounts are migrated automatically. To add a new
+one, temporarily run the container with `-e ALLOW_SIGNUP=true`, sign up, then redeploy.
 
 ## Backups
 
