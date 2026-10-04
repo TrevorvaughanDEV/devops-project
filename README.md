@@ -49,7 +49,8 @@ Pull requests run `test` and `build` only, so nothing is deployed until it is me
 ## Security decisions
 
 - **No secret in code.** The image sets `APP_ENV=production`, and in production the app
-  refuses to start without `SECRET_KEY`. The key comes from a GitHub Actions secret.
+  refuses to start without `SECRET_KEY`. The key comes from a GitHub Actions secret, or is
+  generated once on the server and never leaves it.
 - **Passwords** are salted and hashed with Werkzeug; queries are parameterised.
 - **Session cookies** are `HttpOnly`, `SameSite=Lax` and `Secure` in production.
 - **Sign-up is disabled** on the public instance (`ALLOW_SIGNUP=false`).
