@@ -40,3 +40,8 @@ docker-compose.prod.yml
 *.md
 LICENSE
 README.md
+tests
+requirements-dev.txt
+pyproject.toml
+docs
+.github

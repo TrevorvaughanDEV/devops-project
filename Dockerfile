@@ -1,22 +1,30 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    APP_ENV=production \
+    DATABASE_PATH=/app/data/metrics.db
 
 WORKDIR /app
 
-# Copy requirements first for better caching
+# Dependencies first so this layer is cached between code changes
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir gunicorn
+COPY app.py .
+COPY templates/ templates/
 
-# Copy application code
-COPY . .
-
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Run as a non-root user; /app/data is the only writable path (mounted as a volume)
+RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /app/data \
+    && chown -R appuser:appuser /app/data
 USER appuser
 
 EXPOSE 5000
 
-# Run with gunicorn for production
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "-w", "4", "-t", "60", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+# python:slim has no curl, so the health check uses Python's standard library
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/healthz', timeout=3).status == 200 else 1)"
+
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "60", \
+     "--access-logfile", "-", "--error-logfile", "-", "app:app"]
