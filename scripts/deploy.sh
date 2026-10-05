@@ -12,7 +12,11 @@
 #   ./deploy some-branch
 #
 # Optional settings (e.g. ABUSEIPDB_KEY=...) go in ~/.whos-knocking.env, one per line.
+# Server settings (e.g. HONEYPOT_PORT=22) go in ~/.whos-knocking.conf.
 set -euo pipefail
+
+# shellcheck source=/dev/null
+[ -f "$HOME/.whos-knocking.conf" ] && . "$HOME/.whos-knocking.conf"
 
 BRANCH="${1:-main}"
 REPO=https://github.com/TrevorvaughanDEV/devops-project
@@ -69,6 +73,15 @@ healthy() {
   done
   return 1
 }
+
+# Refuse to take a port something else (like the real sshd) is listening on,
+# before touching the running site.
+if sudo ss -ltnpH "( sport = :$HONEYPOT_PORT )" | grep -v docker-proxy | grep -q .; then
+  echo "Port $HONEYPOT_PORT is already used by another program:"
+  sudo ss -ltnpH "( sport = :$HONEYPOT_PORT )"
+  echo "Nothing was changed. Move that program first (see docs/deployment.md)."
+  exit 3
+fi
 
 say "Starting the new version"
 sudo docker run --rm -v "$VOLUME":/data alpine chown -R 1000:1000 /data

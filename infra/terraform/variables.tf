@@ -36,15 +36,15 @@ variable "admin_ssh_public_key" {
 }
 
 variable "admin_ssh_port" {
-  description = "Port for real SSH. Set to e.g. 22022 to free port 22 for the honeypot"
+  description = "Port for real SSH; 22 belongs to the honeypot"
   type        = number
-  default     = 22
+  default     = 22022
 }
 
 variable "honeypot_ports" {
   description = "Public ports the honeypot answers on"
   type        = list(number)
-  default     = [2222]
+  default     = [22, 2222]
 }
 
 variable "admin_source_cidrs" {
