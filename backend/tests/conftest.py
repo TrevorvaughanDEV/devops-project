@@ -38,3 +38,13 @@ def attempt(ip="203.0.113.7", username="root", password="123456", **extra):
     }
     event.update(extra)
     return event
+
+
+@pytest.fixture
+def live_client(settings):
+    """App with the honeypot actually listening (on a random free port)."""
+    from dataclasses import replace
+
+    app = create_app(replace(settings, sensor_port=0), start_sensor=True)
+    with TestClient(app) as c:
+        yield c

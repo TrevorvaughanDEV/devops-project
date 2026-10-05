@@ -9,6 +9,7 @@ import { HowItWorks } from "./components/HowItWorks";
 import { IpPanel } from "./components/IpPanel";
 import { Log } from "./components/Log";
 import { RankList } from "./components/RankList";
+import { TryIt } from "./components/TryIt";
 import { ago, num } from "./format";
 
 const LOG_SIZE = 60;
@@ -36,6 +37,7 @@ export default function App() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [points, setPoints] = useState<MapPoint[]>([]);
   const [selected, setSelected] = useState<string | null>(ipFromHash);
+  const [mine, setMine] = useState<Set<number>>(() => new Set());
 
   useEffect(() => { if (polledSummary) setSummary(polledSummary); }, [polledSummary]);
   useEffect(() => { if (polledPoints) setPoints(polledPoints); }, [polledPoints]);
@@ -55,7 +57,9 @@ export default function App() {
   const live = useLive(
     useCallback((a: Attempt) => {
       setLog((l) => [a, ...l].slice(0, LOG_SIZE));
-      setSummary((s) => s && { ...s, attempts: s.attempts + 1, total_attempts: s.total_attempts + 1, last_seen: a.ts });
+      if (a.method !== "web") {
+        setSummary((s) => s && { ...s, attempts: s.attempts + 1, total_attempts: s.total_attempts + 1, last_seen: a.ts });
+      }
       const arc = toArc(a);
       if (!arc) return;
       setArcs((xs) => [...xs, arc].slice(-MAX_ARCS));
@@ -71,6 +75,18 @@ export default function App() {
       });
     }, []),
   );
+
+  // The visitor's own attempt: mark it, and make sure it is in the log and on the map
+  // even if the live feed delivered it before this response arrived (or not at all).
+  const onMine = useCallback((a: Attempt) => {
+    setMine((m) => new Set(m).add(a.id));
+    setLog((l) => (l.some((x) => x.id === a.id) ? l : [a, ...l].slice(0, LOG_SIZE)));
+    const arc = toArc(a);
+    if (arc) {
+      setArcs((xs) => (xs.some((x) => x.key === arc.key) ? xs : [...xs, arc].slice(-MAX_ARCS)));
+      setTimeout(() => setArcs((xs) => xs.filter((x) => x.key !== arc.key)), ARC_MS + 2000);
+    }
+  }, []);
 
   const s = summary;
   return (
@@ -113,9 +129,10 @@ export default function App() {
           </div>
 
           <div className="hero-board">
-            <AttackMap meta={meta} points={points} arcs={arcs} onSelect={select} />
-            <Log entries={log} state={live} port={meta?.port} onSelect={select} />
+            <AttackMap meta={meta} points={points} arcs={arcs} mine={mine} onSelect={select} />
+            <Log entries={log} state={live} port={meta?.port} mine={mine} onSelect={select} />
           </div>
+          <TryIt port={meta?.port} onAttempt={onMine} />
         </section>
 
         <section id="tries" className="band" aria-labelledby="tries-title">
