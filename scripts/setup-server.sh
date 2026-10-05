@@ -11,8 +11,8 @@
 # After this, the first push to main (or re-running the workflow) deploys the app.
 set -euo pipefail
 
-DOMAIN="${1:?usage: setup-server.sh <domain> <email for Let's Encrypt>}"
-EMAIL="${2:?usage: setup-server.sh <domain> <email for Let's Encrypt>}"
+DOMAIN="${1:?usage: setup-server.sh <domain> <email for certificate notices>}"
+EMAIL="${2:?usage: setup-server.sh <domain> <email for certificate notices>}"
 REPO_RAW="https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main"
 DEPLOY_USER="${SUDO_USER:-$(logname 2>/dev/null || echo ubuntu)}"
 
