@@ -107,21 +107,28 @@ the image. The old `DEPLOY_*` secrets are no longer used and can be deleted.
 pinned to its last image, as a separate container (`devops-monitor-v1`, `127.0.0.1:5001`)
 with its own Nginx site and certificate. Deploys of the main site don't touch it.
 
-## Optional: put the honeypot on port 22
+## Put the honeypot on port 22
 
-Most bots only try port 22, so moving real SSH out of the way multiplies the data. Order
-matters, so you can't lock yourself out:
+Most bots only try port 22, so the honeypot lives there and real SSH moves to 22022.
+The order matters, so you can't lock yourself out:
 
-1. Open the new admin port first: `az vm open-port -g devops-es -n devops-vm --port 22022 --priority 1030`
-   and `sudo ufw allow 22022/tcp` on the VM.
-2. On the VM, add `Port 22022` to `/etc/ssh/sshd_config` (keep `Port 22` for now), then run
-   `sudo systemctl restart ssh`. Ubuntu 24.04 uses socket activation, so also run
-   `sudo systemctl daemon-reload && sudo systemctl restart ssh.socket`.
-3. From your PC, check `ssh -p 22022 azureuser@<ip>` works.
-4. Remove `Port 22` from `sshd_config` and restart ssh again.
-5. Add `export HONEYPOT_PORT=22` to `~/.bashrc` and to the systemd service
-   (`sudo systemctl edit whos-knocking-autodeploy`, then add `Environment=HONEYPOT_PORT=22`
-   under `[Service]`), open port 22 to the world in the NSG, and run `~/deploy`.
+1. Open 22022 in Azure (Cloud Shell): `az vm open-port -g devops-es -n devops-vm --port 22022 --priority 1030`
+2. On the server, listen on both ports:
+   ```bash
+   sudo ufw allow 22022/tcp
+   printf 'Port 22\nPort 22022\n' | sudo tee /etc/ssh/sshd_config.d/10-admin-port.conf
+   sudo systemctl daemon-reload && sudo systemctl restart ssh.socket
+   ```
+3. From your PC, in a new window, check `ssh -p 22022 azureuser@<ip>` works.
+4. On the server, drop port 22 from sshd and hand it to the honeypot:
+   ```bash
+   printf 'Port 22022\n' | sudo tee /etc/ssh/sshd_config.d/10-admin-port.conf
+   sudo systemctl daemon-reload && sudo systemctl restart ssh.socket
+   echo 'HONEYPOT_PORT=22' > ~/.whos-knocking.conf
+   ~/deploy
+   ```
+   `deploy.sh` refuses to start if anything else still holds port 22, so a mistake
+   here leaves the site as it was.
 
 ## Backups
 
