@@ -4,8 +4,11 @@
 
 A server-monitoring dashboard I built and run myself at **[trevorvaughan.dev](https://trevorvaughan.dev)**.
 It reports live CPU, memory and disk usage from the host, behind a login, and every push to
-`main` is linted, tested, security-scanned, containerised and rolled out to AWS with an
+`main` is linted, tested, security-scanned, containerised and rolled out to a cloud VM with an
 automatic rollback if the new version fails its health check.
+
+It started on AWS EC2 and now runs on an Azure VM. Moving clouds meant changing
+three secrets, because nothing in the pipeline is tied to a provider.
 
 The app itself is deliberately small. The point of the project is everything around it:
 the pipeline, the container, the server, TLS, and making deploys safe.
@@ -24,7 +27,7 @@ flowchart LR
 
     p --> ssh[SSH deploy job]
 
-    subgraph ec2[AWS EC2 · Ubuntu]
+    subgraph vm[Azure VM · Ubuntu]
         direction TB
         nginx[Nginx<br/>TLS via Let's Encrypt] --> app[Gunicorn + Flask<br/>container :5000]
         app --> vol[(Docker volume<br/>SQLite)]
@@ -42,7 +45,7 @@ flowchart LR
 |---|---|---|
 | **test** | `ruff` lint and format check, `pytest`, `pip-audit` on pinned dependencies | Broken or vulnerable code never reaches the image |
 | **build** | Builds the image, starts it, and polls `/healthz` before pushing | Catches images that build but don't boot |
-| **deploy** | Pulls the SHA-tagged image on EC2, swaps the container, waits for `/healthz`, rolls back to the previous image on failure | A bad release can't take the site down |
+| **deploy** | Pulls the SHA-tagged image on the VM, swaps the container, waits for `/healthz`, rolls back to the previous image on failure | A bad release can't take the site down |
 
 Pull requests run `test` and `build` only, so nothing is deployed until it is merged.
 
@@ -106,10 +109,10 @@ docs/nginx.conf         Reverse proxy and TLS config
 
 ## What's next
 
-- [ ] Provision the EC2 instance, security group and DNS with **Terraform** instead of by hand
+- [ ] Provision the VM, network security group and DNS with **Terraform** instead of by hand
 - [ ] Ship metrics to **Prometheus** and graph them in **Grafana**
 - [ ] A lightweight agent so the dashboard can watch more than one real server
-- [ ] Move from SQLite to **PostgreSQL** on RDS
+- [ ] Move from SQLite to a managed **PostgreSQL** database
 - [ ] Container image scanning with Trivy
 
 ## Author
