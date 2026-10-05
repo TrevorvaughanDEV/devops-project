@@ -32,7 +32,15 @@ for kind, name in (("city", "city.mmdb"), ("asn", "asn.mmdb")):
                 os.remove(name + ".part")
 PY
 
-# --- 3. Runtime ---------------------------------------------------------------
+# --- 3. Tests (build with --target test; deploys refuse to continue if this fails) ---
+FROM python:3.12-slim AS test
+WORKDIR /src
+COPY backend/requirements.txt backend/requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
+COPY backend/ ./
+RUN ruff check . && ruff format --check . && pytest -q -p no:cacheprovider
+
+# --- 4. Runtime ---------------------------------------------------------------
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

@@ -1,6 +1,6 @@
 # Who's Knocking?
 
-[![CI/CD](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/deploy.yml/badge.svg)](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/deploy.yml)
+[![CI/CD](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/ci.yml/badge.svg)](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/ci.yml)
 
 A live map of bots trying to break into my server, at **[trevorvaughan.dev](https://trevorvaughan.dev)**.
 
@@ -70,21 +70,45 @@ SSH handshake to every open browser in milliseconds without a message broker.
 | Packaging | Multi-stage Docker build (Node → geo download → slim Python), non-root |
 | Infrastructure | Azure VM, NSG, static IP, described in **Terraform** (`infra/terraform`) |
 | Edge | Nginx, Let's Encrypt, HSTS, Content-Security-Policy |
-| CI/CD | GitHub Actions: lint, tests, dependency audits, Terraform validate, image smoke test, deploy with health check and automatic rollback |
+| CI | GitHub Actions: lint, tests, dependency audits, Terraform validate, image smoke test |
+| CD | Pull-based (GitOps): the server deploys new commits on `main` itself, with tests, health check and automatic rollback |
 
-## The pipeline
+## How changes go live
 
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
+```mermaid
+flowchart LR
+    push[git push to main] --> ci[GitHub Actions CI<br/>lint · tests · audits · terraform · image smoke test]
+    push -.-> poll
+    subgraph vm[Azure VM]
+        poll[systemd timer, every 2 min<br/>git ls-remote main] -->|new commit| deploy[~/deploy]
+        deploy --> t[test stage in Docker] --> b[build] --> h{/healthz ok?}
+        h -->|yes| live[New version live]
+        h -->|no| rb[Roll back to previous image]
+    end
+```
+
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and pull request:
 
 | Job | What it does |
 |---|---|
-| **backend** | `ruff` lint and format, `pytest` (including a real SSH login against the honeypot), `pip-audit` |
+| **backend** | `ruff` lint and format, `pytest` (including real SSH logins against the honeypot), `pip-audit` |
 | **frontend** | `npm ci`, TypeScript typecheck, production build, `npm audit` |
 | **terraform** | `terraform fmt -check` and `terraform validate` |
 | **build** | Builds the image, then checks it boots, serves the page and API, and answers SSH with an OpenSSH banner |
-| **deploy** | Pulls the SHA-tagged image on the VM, swaps the container, waits for `/healthz`, rolls back on failure |
 
-Pull requests run everything except the deploy.
+**CD is pull-based**, the model behind Argo CD and Flux. A systemd timer on the server
+([`scripts/autodeploy.sh`](scripts/autodeploy.sh)) checks `main` every two minutes. When it
+finds a new commit, it runs [`scripts/deploy.sh`](scripts/deploy.sh):
+1. Run the test suite in a Docker test stage.
+2. Build the image.
+3. Swap the container.
+4. Wait for `/healthz`.
+5. If the new version fails its health check, roll back to the previous image automatically.
+
+Why pull instead of pushing over SSH from CI:
+- **Nothing extra is exposed.** The server only makes outbound requests, and no deploy key with shell access sits in GitHub.
+- **It doesn't depend on CI runners.** A busy GitHub Actions queue can't hold a release back.
+- **Tests still gate every deploy,** because the server runs them itself.
 
 ## Run it locally
 
@@ -120,7 +144,8 @@ Tests: `cd backend && pytest -v`
 
 ## History
 
-Version 1 was a Flask server-monitoring dashboard on AWS EC2. When the AWS free plan ended
+Version 1 was a Flask server-monitoring dashboard on AWS EC2. It still runs at
+[monitor.trevorvaughan.dev](https://monitor.trevorvaughan.dev). When the AWS free plan ended
 I moved it to Azure by changing three deploy secrets, then rebuilt it as this honeypot.
 Deployment notes are in [`docs/deployment.md`](docs/deployment.md).
 
