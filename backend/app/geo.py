@@ -22,8 +22,13 @@ class GeoLookup:
     @staticmethod
     def _open(path: Path):
         if path.is_file():
+            try:
+                db = maxminddb.open_database(str(path))
+            except (OSError, ValueError, maxminddb.InvalidDatabaseError) as exc:
+                logger.error("Geo database %s is unreadable: %s", path, exc)
+                return None
             logger.info("Loaded geo database %s", path)
-            return maxminddb.open_database(str(path))
+            return db
         logger.warning("Geo database %s not found; lookups disabled", path)
         return None
 

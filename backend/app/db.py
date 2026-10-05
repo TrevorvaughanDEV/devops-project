@@ -100,6 +100,25 @@ class Store:
             self._db.commit()
             return int(cur.lastrowid)
 
+    def unlocated_ips(self, limit: int = 5000) -> list[str]:
+        return [
+            r["ip"]
+            for r in self._all(
+                "SELECT DISTINCT ip FROM attempts WHERE country IS NULL LIMIT ?", (limit,)
+            )
+        ]
+
+    def set_location(self, ip: str, geo: dict[str, Any]) -> int:
+        cols = ("country", "country_name", "city", "lat", "lon", "asn", "org")
+        with self._lock:
+            cur = self._db.execute(
+                f"UPDATE attempts SET {', '.join(f'{c} = ?' for c in cols)}"
+                " WHERE ip = ? AND country IS NULL",
+                (*(geo.get(c) for c in cols), ip),
+            )
+            self._db.commit()
+            return cur.rowcount
+
     def prune(self, older_than_days: int) -> int:
         cutoff = time.time() - older_than_days * 86400
         with self._lock:
