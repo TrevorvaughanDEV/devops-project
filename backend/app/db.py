@@ -77,6 +77,10 @@ class Store:
         with self._lock:
             self._db.close()
 
+    def query(self, sql: str, args: tuple = ()) -> list[dict[str, Any]]:
+        """Read-only SQL for the insight and report builders (fixed SQL, bound args)."""
+        return self._all(sql, args)
+
     def _all(self, sql: str, args: tuple = ()) -> list[dict[str, Any]]:
         with self._lock:
             return [dict(r) for r in self._db.execute(sql, args).fetchall()]

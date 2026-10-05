@@ -21,6 +21,10 @@ the browser as it happens.
 - **Where from:** countries and the networks (cloud providers, ISPs) the attacks come from
 - **When:** a day-by-hour heatmap of attack volume
 - **Attacker profiles:** click any address for its location, network, everything it tried, and its AbuseIPDB reputation
+- **What the data says:** plain-English findings worked out from the past week, e.g. how many attempts go for `root`
+- **Try to break in:** visitors make a real SSH login against the honeypot from the page and watch it land on the map
+- **[Weekly report](https://trevorvaughan.dev/report):** a shareable summary of the week, compared with the week before
+- **Link previews:** `/og.png` draws a live map and 24-hour totals with Pillow, so a pasted link shows current numbers
 
 ## Architecture
 

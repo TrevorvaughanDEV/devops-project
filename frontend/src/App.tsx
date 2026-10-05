@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   get, useLive, usePoll,
-  type Attempt, type HeatCell, type MapPoint, type Meta, type Ranked, type Summary,
+  type Attempt, type HeatCell, type Insight, type MapPoint, type Meta, type Ranked, type Summary,
 } from "./api";
+import { About } from "./components/About";
+import { Insights } from "./components/Insights";
+import { useCountUp, useNow } from "./useCountUp";
 import { AttackMap, toArc, type Arc } from "./components/AttackMap";
 import { Heatmap } from "./components/Heatmap";
 import { HowItWorks } from "./components/HowItWorks";
@@ -10,7 +13,7 @@ import { IpPanel } from "./components/IpPanel";
 import { Log } from "./components/Log";
 import { RankList } from "./components/RankList";
 import { TryIt } from "./components/TryIt";
-import { ago, num } from "./format";
+import { ago, num, place, shown } from "./format";
 
 const LOG_SIZE = 60;
 const MAX_ARCS = 24;
@@ -31,6 +34,8 @@ export default function App() {
   const countries = usePoll<Ranked[]>("/api/top/countries?hours=168&limit=10", 60_000).data;
   const orgs = usePoll<Ranked[]>("/api/top/orgs?hours=168&limit=10", 120_000).data;
   const heat = usePoll<HeatCell[]>("/api/heatmap?days=30", 300_000).data;
+  const insights = usePoll<Insight[]>("/api/insights?days=7", 120_000).data;
+  const countries24 = usePoll<Ranked[]>("/api/top/countries?hours=24&limit=50", 60_000).data;
 
   const [log, setLog] = useState<Attempt[]>([]);
   const [arcs, setArcs] = useState<Arc[]>([]);
@@ -89,6 +94,11 @@ export default function App() {
   }, []);
 
   const s = summary;
+  const attempts = useCountUp(s?.attempts);
+  const ips = useCountUp(s?.ips);
+  const nCountries = useCountUp(s?.countries);
+  const now = useNow();
+  const latestBot = log.find((a) => a.method !== "web");
   return (
     <>
       <header className="masthead">
@@ -97,8 +107,8 @@ export default function App() {
           <nav aria-label="Sections">
             <a href="#tries">What they try</a>
             <a href="#where">Where from</a>
-            <a href="#how">How it works</a>
-            <a href="https://github.com/TrevorvaughanDEV/devops-project">Source on GitHub</a>
+            <a href="/report">Weekly report</a>
+            <a href="#about">About me</a>
           </nav>
         </div>
       </header>
@@ -109,9 +119,9 @@ export default function App() {
             <h1 id="hero-title">
               {s && s.attempts > 0 ? (
                 <>
-                  In the last 24 hours, <b>{num(s.ips)}</b> {s.ips === 1 ? "machine" : "machines"} from{" "}
-                  <b>{num(s.countries)}</b> {s.countries === 1 ? "country" : "countries"} tried to break into my
-                  server <b>{num(s.attempts)}</b> times.
+                  In the last 24 hours, <b>{num(ips)}</b> {s.ips === 1 ? "machine" : "machines"} from{" "}
+                  <b>{num(nCountries)}</b> {s.countries === 1 ? "country" : "countries"} tried to break into my
+                  server <b>{num(attempts)}</b> times.
                 </>
               ) : (
                 <>Bots try to break into every server on the internet. This one is watching them.</>
@@ -122,18 +132,27 @@ export default function App() {
               records the username and password of every login attempt and lets none of them in. Every dot on the
               map is a real machine. Click one to see what it tried.
             </p>
-            <p className="hero-meta">
-              {s?.last_seen ? `Last attempt ${ago(s.last_seen)}` : "Waiting for the first attempt"}
-              {s ? `, ${num(s.total_attempts)} recorded in total.` : "."}
+            <p className="hero-meta" aria-live="off">
+              {latestBot ? (
+                <>
+                  Last attempt {ago(latestBot.ts, now)} from {place(latestBot.city, latestBot.country_name)}:{" "}
+                  <code>{latestBot.username} / {latestBot.method === "publickey" ? "SSH key" : shown(latestBot.password)}</code>
+                  . {s ? `${num(s.total_attempts)} recorded in total.` : ""}
+                </>
+              ) : (
+                "Waiting for the first attempt."
+              )}
             </p>
           </div>
 
           <div className="hero-board">
-            <AttackMap meta={meta} points={points} arcs={arcs} mine={mine} onSelect={select} />
+            <AttackMap meta={meta} points={points} arcs={arcs} mine={mine} countries={countries24 ?? []} onSelect={select} />
             <Log entries={log} state={live} port={meta?.port} mine={mine} onSelect={select} />
           </div>
           <TryIt port={meta?.port} onAttempt={onMine} />
         </section>
+
+        <Insights items={insights} />
 
         <section id="tries" className="band" aria-labelledby="tries-title">
           <h2 id="tries-title">What they try</h2>
@@ -166,13 +185,11 @@ export default function App() {
           <h2 id="how-title">How it works</h2>
           <HowItWorks />
         </section>
+
+        <About />
       </main>
 
       <footer className="foot">
-        <p>
-          Built and run by <a href="https://www.linkedin.com/in/trevor-vaughan-1739912ab/">Trevor Vaughan</a>,
-          Network Engineering student at TU Dublin.
-        </p>
         <p className="muted small">
           <a href="https://db-ip.com">IP Geolocation by DB-IP</a>, licensed CC BY 4.0. Map data from Natural Earth.
           Addresses shown are machines that attempted unauthorised logins.
