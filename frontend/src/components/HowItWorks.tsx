@@ -12,8 +12,8 @@ const STEPS = [
     body: "Attempts go into SQLite and straight out to every open browser over a WebSocket, so the map moves the moment a bot knocks. FastAPI serves the API; this page is React.",
   },
   {
-    title: "Shipped by a pipeline",
-    body: "Every push to GitHub is linted, tested, security-scanned and built into a Docker image, then rolled out to an Azure VM with a health check and automatic rollback. Terraform describes the infrastructure.",
+    title: "It deploys itself",
+    body: "Every push to GitHub is linted, tested and security-scanned. The Azure server checks for new versions every two minutes, runs the tests again, swaps in the new build and rolls back on its own if it fails a health check. Terraform describes the infrastructure.",
   },
 ];
 
