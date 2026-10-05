@@ -64,8 +64,8 @@ need a manual approval.
 
 ## Creating your own account
 
-Sign-up is off in production. Existing accounts are migrated automatically. To add a new
-one, temporarily run the container with `-e ALLOW_SIGNUP=true`, sign up, then redeploy.
+Sign-up is open in production (`ALLOW_SIGNUP=true` in the deploy job). To close it, set it to
+`false` in `.github/workflows/deploy.yml` and push.
 
 ## Backups
 

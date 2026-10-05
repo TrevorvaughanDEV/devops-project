@@ -131,7 +131,7 @@ jobs:
             run_container() {
               sudo docker run -d --name "$NAME" -p 5000:5000 --restart unless-stopped \
                 -e SECRET_KEY="$KEY" \
-                -e ALLOW_SIGNUP=false \
+                -e ALLOW_SIGNUP=true \
                 -v "$VOLUME":/app/data \
                 "$1"
             }
