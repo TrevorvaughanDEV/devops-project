@@ -115,9 +115,14 @@ class Sensor:
 
     @property
     def port(self) -> int | None:
+        """The IPv4 listening port. On a dual-stack host the server opens an IPv4 and an
+        IPv6 socket, and with port 0 each gets a different port, so pick the IPv4 one:
+        that's the one web_attempt() connects to on 127.0.0.1."""
         if not self._server:
             return None
-        return self._server.sockets[0].getsockname()[1]
+        sockets = self._server.sockets
+        ipv4 = [s for s in sockets if s.family == socket.AF_INET]
+        return (ipv4 or sockets)[0].getsockname()[1]
 
     async def web_attempt(
         self, visitor_ip: str, username: str, password: str, timeout: float = 10

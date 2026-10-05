@@ -66,3 +66,20 @@ def test_input_cleaning():
     assert _clean("x" * 500, 128) == "x" * 128
     assert _clean(None, 5) is None
     assert _normalise_ip("::ffff:203.0.113.9") == "203.0.113.9"
+
+
+async def test_port_is_the_ipv4_listener_on_dual_stack(tmp_path):
+    # Listening on all interfaces opens IPv4 and (where available) IPv6 sockets;
+    # with port 0 they can get different ports. .port must be the IPv4 one.
+    import socket
+
+    s = Sensor(lambda e: None)
+    await s.start(0, load_host_keys(tmp_path), "OpenSSH_9.6p1", host="")
+    try:
+        ipv4 = [x for x in s._server.sockets if x.family == socket.AF_INET]
+        assert s.port == ipv4[0].getsockname()[1]
+        reader, writer = await asyncio.open_connection("127.0.0.1", s.port)
+        assert (await reader.readline()).startswith(b"SSH-2.0-")
+        writer.close()
+    finally:
+        await s.stop()
