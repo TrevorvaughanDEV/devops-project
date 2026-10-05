@@ -28,8 +28,8 @@ At the domain registrar, set the `A` records for `@` and `www` to the VM's publi
 SSH in (`ssh -i key.pem azureuser@<ip>`) and run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/setup-server.sh \
-  | sudo bash -s -- trevorvaughan.dev you@example.com
+curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/setup-server.sh -o setup.sh
+sudo bash setup.sh trevorvaughan.dev you@example.com
 ```
 
 [`scripts/setup-server.sh`](../scripts/setup-server.sh) checks DNS points at the VM, then
