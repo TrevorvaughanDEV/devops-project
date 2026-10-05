@@ -60,32 +60,52 @@ installs [`nginx.conf`](nginx.conf), adds 1 GB of swap, enables `ufw` (SSH, HTTP
 2222) and turns on unattended security updates. It is safe to re-run, and re-running it is
 how a changed `nginx.conf` gets onto the server.
 
-## GitHub secrets and variables
+## Turn on auto-deploy
 
-**Settings → Secrets and variables → Actions**
+After the one-time setup, run this once on the server:
 
-| Secret | What it is |
+```bash
+curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/install-autodeploy.sh | bash
+```
+
+It installs `~/deploy` and `~/autodeploy` and a systemd timer that checks `main` every two
+minutes. From then on, anything merged to `main` goes live by itself.
+
+| | |
 |---|---|
-| `DOCKER_USERNAME` / `DOCKER_PASSWORD` | Docker Hub login (use an access token) |
-| `DEPLOY_HOST` | VM public IP. If unset, the deploy job is skipped, not failed |
-| `DEPLOY_USER` | `azureuser` on Azure, `ubuntu` on AWS |
-| `DEPLOY_SSH_KEY` | Private key for that user |
-| `ABUSEIPDB_KEY` | *Optional.* Free key from abuseipdb.com for attacker reputation scores |
-
-| Variable | Default | What it is |
-|---|---|---|
-| `HONEYPOT_PORT` | `2222` | Public port the honeypot answers on |
-| `ADMIN_SSH_PORT` | `22` | Port the deploy job uses for real SSH |
+| Deploy now | `~/deploy` (or `~/deploy some-branch` to try a branch) |
+| Is it running? | `systemctl list-timers whos-knocking-autodeploy` |
+| What happened? | `journalctl -u whos-knocking-autodeploy -n 50` |
+| Pause it | `sudo systemctl stop whos-knocking-autodeploy.timer` |
 
 ## What a deploy does
 
-1. Pulls the new image tagged with the commit SHA.
-2. Records the image currently running and fixes ownership on the data volume.
+1. Fetches the commit and runs the backend lint and tests in the Docker `test` stage. If
+   they fail, nothing changes.
+2. Builds the image and fixes ownership on the data volume.
 3. Starts the new container: web on `127.0.0.1:5000` (only Nginx can reach it), honeypot
-   on `HONEYPOT_PORT`, capped at 400 MB of memory, with the `devops-monitor-data` volume
-   holding the database and the honeypot's SSH host keys.
-4. Polls `/healthz` for up to a minute. If it never passes, the new container is removed,
-   the previous image is started again, and the workflow fails.
+   on 2222, capped at 400 MB of memory, with the `devops-monitor-data` volume holding the
+   database and the honeypot's SSH host keys.
+4. Polls `/healthz` for up to a minute. If it never passes, the new container is removed
+   and the previous image is started again.
+5. Updates the Nginx config if the repo's copy changed (keeping the old one if
+   `nginx -t` fails), and removes old images.
+
+A commit that fails is not retried; the next push gets a fresh attempt.
+
+Optional settings go in `~/.whos-knocking.env`, one per line. For example,
+`ABUSEIPDB_KEY=...` turns on attacker reputation scores.
+
+## GitHub secrets
+
+CI only needs `DOCKER_USERNAME` and `DOCKER_PASSWORD` (a Docker Hub access token) to publish
+the image. The old `DEPLOY_*` secrets are no longer used and can be deleted.
+
+## The second site
+
+[monitor.trevorvaughan.dev](https://monitor.trevorvaughan.dev) runs the v1 Flask dashboard,
+pinned to its last image, as a separate container (`devops-monitor-v1`, `127.0.0.1:5001`)
+with its own Nginx site and certificate. Deploys of the main site don't touch it.
 
 ## Optional: put the honeypot on port 22
 
@@ -99,21 +119,9 @@ matters, so you can't lock yourself out:
    `sudo systemctl daemon-reload && sudo systemctl restart ssh.socket`.
 3. From your PC, check `ssh -p 22022 azureuser@<ip>` works.
 4. Remove `Port 22` from `sshd_config` and restart ssh again.
-5. Set the GitHub variables `ADMIN_SSH_PORT=22022` and `HONEYPOT_PORT=22`, then re-run
-   the deploy.
-
-## Deploying by hand
-
-If GitHub Actions is slow or down, deploy straight from the server with
-[`scripts/deploy.sh`](../scripts/deploy.sh). It does the same build, health check and
-automatic rollback as the pipeline:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/deploy.sh -o ~/deploy && chmod +x ~/deploy
-./deploy
-```
-
-Optional settings such as `ABUSEIPDB_KEY=...` go in `~/.whos-knocking.env`.
+5. Add `export HONEYPOT_PORT=22` to `~/.bashrc` and to the systemd service
+   (`sudo systemctl edit whos-knocking-autodeploy`, then add `Environment=HONEYPOT_PORT=22`
+   under `[Service]`), open port 22 to the world in the NSG, and run `~/deploy`.
 
 ## Backups
 

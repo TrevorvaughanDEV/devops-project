@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Deploy the latest main to this server, without GitHub Actions.
 #
-# Same safety as the pipeline: build, start, health-check, and roll back to the
-# previous version automatically if the new one doesn't come up.
+# Same safety as a pipeline: run the test suite, build, start, health-check, and roll
+# back to the previous version automatically if the new one doesn't come up.
+# Also run every 2 minutes by scripts/autodeploy.sh when a new commit lands on main.
 #
 # Install once (on the server):
 #   curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/deploy.sh -o ~/deploy && chmod +x ~/deploy
@@ -34,6 +35,13 @@ else
 fi
 SHA=$(git -C "$SRC" rev-parse --short HEAD)
 echo "$(git -C "$SRC" log -1 --format='%h %s')"
+
+say "Running the tests"
+if ! sudo docker build -q --target test "$SRC" >/dev/null; then
+  echo "Tests failed for $SHA; nothing was deployed. See: sudo docker build --target test $SRC"
+  exit 2
+fi
+echo "All tests passed"
 
 NEW_IMAGE="whos-knocking:$SHA"
 say "Building $NEW_IMAGE"
@@ -93,10 +101,13 @@ if ! sed "s/trevorvaughan\.dev/$DOMAIN/g" "$SRC/docs/nginx.conf" | sudo cmp -s -
   fi
 fi
 
+git -C "$SRC" rev-parse HEAD > "$HOME/.whos-knocking-deployed"
+
 say "Cleaning up old images (keeping the last 3)"
 sudo docker images whos-knocking --format '{{.Tag}} {{.CreatedAt}}' \
   | sort -k2 -r | tail -n +4 | awk '{print "whos-knocking:" $1}' \
   | xargs -r sudo docker rmi >/dev/null 2>&1 || true
+sudo docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
 
 say "Live: https://$DOMAIN is running $SHA"
 curl -fsS http://127.0.0.1:5000/api/meta; echo
