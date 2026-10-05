@@ -1,32 +1,62 @@
+# --- 1. Build the React frontend ---------------------------------------------
+FROM node:22-alpine AS ui
+WORKDIR /ui
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+# --- 2. Fetch the free DB-IP Lite geolocation databases (CC BY 4.0) ------------
+# This month's release, falling back to last month's. If both fail the image still
+# builds; the honeypot just records attempts without locations.
+FROM python:3.12-slim AS geo
+WORKDIR /geo
+RUN python - <<'PY'
+import datetime, gzip, shutil, urllib.request
+today = datetime.date.today().replace(day=1)
+months = [today, (today - datetime.timedelta(days=1)).replace(day=1)]
+for kind, name in (("city", "city.mmdb"), ("asn", "asn.mmdb")):
+    for m in months:
+        url = f"https://download.db-ip.com/free/dbip-{kind}-lite-{m:%Y-%m}.mmdb.gz"
+        try:
+            with urllib.request.urlopen(url, timeout=60) as r, open(name, "wb") as out:
+                shutil.copyfileobj(gzip.GzipFile(fileobj=r), out)
+            print("downloaded", url)
+            break
+        except Exception as exc:
+            print("could not fetch", url, exc)
+PY
+
+# --- 3. Runtime ---------------------------------------------------------------
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    APP_ENV=production \
-    DATABASE_PATH=/app/data/metrics.db \
-    WEB_CONCURRENCY=2
+    DATA_DIR=/app/data \
+    DATABASE_PATH=/app/data/attacks.db \
+    STATIC_DIR=/app/static \
+    GEO_CITY_DB=/app/geo/city.mmdb \
+    GEO_ASN_DB=/app/geo/asn.mmdb \
+    SENSOR_PORT=2222
 
 WORKDIR /app
-
-# Dependencies first so this layer is cached between code changes
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py .
-COPY templates/ templates/
+COPY backend/app/ app/
+COPY --from=ui /ui/dist/ static/
+COPY --from=geo /geo/ geo/
 
-# Run as a non-root user; /app/data is the only writable path (mounted as a volume)
+# Non-root; /app/data (a volume) is the only writable path. The honeypot listens on
+# 2222 inside the container, so it never needs root to bind a low port.
 RUN useradd --create-home --uid 1000 appuser \
-    && mkdir -p /app/data \
-    && chown -R appuser:appuser /app/data
+    && mkdir -p /app/data && chown -R appuser:appuser /app/data
 USER appuser
 
-EXPOSE 5000
+EXPOSE 5000 2222
 
-# python:slim has no curl, so the health check uses Python's standard library
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/healthz', timeout=3).status == 200 else 1)"
 
-# Gunicorn reads the worker count from WEB_CONCURRENCY (2 suits a 1 GB VM)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "60", \
-     "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+# One worker on purpose: the live feed fans out from memory in this process.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000", "--no-server-header"]
