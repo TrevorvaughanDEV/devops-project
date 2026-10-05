@@ -56,7 +56,7 @@ Pull requests run `test` and `build` only, so nothing is deployed until it is me
   generated once on the server and never leaves it.
 - **Passwords** are salted and hashed with Werkzeug; queries are parameterised.
 - **Session cookies** are `HttpOnly`, `SameSite=Lax` and `Secure` in production.
-- **Sign-up is disabled** on the public instance (`ALLOW_SIGNUP=false`).
+- **Sign-up is open** on the public instance so visitors can try it; set `ALLOW_SIGNUP=false` to close it.
 - **Non-root container**, with `/app/data` as its only writable path.
 - **Dependencies are pinned** and scanned for known CVEs on every push.
 - **Nginx** redirects HTTP to HTTPS and sets HSTS and other security headers.
