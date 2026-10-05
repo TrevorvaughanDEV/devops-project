@@ -1,31 +1,41 @@
 # Deployment
 
-The app runs on a single AWS EC2 instance (Ubuntu). Nginx on the host terminates TLS
-with a Let's Encrypt certificate and proxies to the app container on port 5000.
-GitHub Actions builds, tests and rolls out every push to `main`.
+The app runs on a single small Ubuntu VM. It currently lives on **Azure** (a B1s VM
+under Azure for Students); it ran on **AWS EC2** before that. Nothing in the pipeline
+is tied to a provider: any Ubuntu server reachable over SSH works.
+
+Nginx on the host terminates TLS with a Let's Encrypt certificate and proxies to the
+app container on port 5000. GitHub Actions builds, tests and rolls out every push to `main`.
+
+## Create the VM (Azure)
+
+1. Azure portal → **Virtual machines → Create**.
+   - Image: **Ubuntu Server 24.04 LTS**, size **B1s** (1 vCPU, 1 GB).
+   - Authentication: **SSH public key**, username `azureuser`; download the private key.
+   - Inbound ports: **SSH (22), HTTP (80), HTTPS (443)**.
+2. After it's created: **Networking → Public IP → Configuration → Static**, so the IP
+   survives restarts.
+3. In the network security group, narrow the SSH rule's source to your own IP.
+   GitHub Actions also needs SSH, so either keep 22 open with key-only login (the default)
+   or allow the [GitHub Actions IP ranges](https://api.github.com/meta).
+
+## Point the domain at it
+
+At the domain registrar, set the `A` records for `@` and `www` to the VM's public IP.
 
 ## One-time server setup
 
+SSH in (`ssh -i key.pem azureuser@<ip>`) and run:
+
 ```bash
-# Docker
-curl -fsSL https://get.docker.com | sudo sh
-
-# Nginx + Certbot
-sudo apt install -y nginx certbot
-
-# Get the certificate first: the Nginx config below refers to it
-sudo systemctl stop nginx
-sudo certbot certonly --standalone -d trevorvaughan.dev -d www.trevorvaughan.dev \
-  --pre-hook "systemctl stop nginx" --post-hook "systemctl start nginx"  # saved for auto-renewal
-
-sudo cp docs/nginx.conf /etc/nginx/sites-available/devops-monitor
-sudo ln -s /etc/nginx/sites-available/devops-monitor /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx   # the post-hook already restarted Nginx
+curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/setup-server.sh -o setup.sh
+sudo bash setup.sh trevorvaughan.dev you@example.com
 ```
 
-In the EC2 security group, allow 22 (your IP only), 80 and 443. Port 5000 does not need
-to be open to the internet because Nginx reaches the container locally.
+[`scripts/setup-server.sh`](../scripts/setup-server.sh) checks DNS points at the VM, then
+installs Docker, Nginx and Certbot, gets the certificate (auto-renewing), installs
+[`nginx.conf`](nginx.conf), adds 1 GB of swap, enables the `ufw` firewall (22/80/443 only)
+and turns on unattended security updates. It's safe to re-run.
 
 ## GitHub secrets
 
@@ -34,8 +44,9 @@ Set these under **Settings → Secrets and variables → Actions**:
 | Secret | What it is |
 |---|---|
 | `DOCKER_USERNAME` / `DOCKER_PASSWORD` | Docker Hub login (use an access token, not your password) |
-| `AWS_HOST` | Public IP or DNS name of the EC2 instance |
-| `AWS_SSH_KEY` | Private key for the `ubuntu` user |
+| `DEPLOY_HOST` | Public IP or DNS name of the VM. If unset, the deploy job is skipped, not failed |
+| `DEPLOY_USER` | SSH user: `azureuser` on Azure, `ubuntu` on AWS (default `ubuntu`) |
+| `DEPLOY_SSH_KEY` | Private key for that user |
 | `APP_SECRET_KEY` | *Optional.* Flask session key. If it isn't set, the first deploy generates one on the server in `~/.devops-monitor-secret` and reuses it |
 
 Optionally add a `production` environment with required reviewers to make deploys
