@@ -18,6 +18,14 @@ set -euo pipefail
 # shellcheck source=/dev/null
 [ -f "$HOME/.whos-knocking.conf" ] && . "$HOME/.whos-knocking.conf"
 
+# One deploy at a time: a manual ./deploy and the auto-deploy timer wait for each other
+# instead of building and testing side by side on a small VM.
+exec 8>"$HOME/.whos-knocking-deploy.lock"
+if ! flock -n 8; then
+  echo "Another deploy is running; waiting for it to finish..."
+  flock 8
+fi
+
 BRANCH="${1:-main}"
 REPO=https://github.com/TrevorvaughanDEV/devops-project
 SRC="$HOME/devops-project"
