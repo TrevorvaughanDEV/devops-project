@@ -49,10 +49,14 @@ SHA=$(git -C "$SRC" rev-parse --short HEAD)
 echo "$(git -C "$SRC" log -1 --format='%h %s')"
 
 say "Running the tests"
-if ! sudo docker build -q --target test "$SRC" >/dev/null; then
-  echo "Tests failed for $SHA; nothing was deployed. See: sudo docker build --target test $SRC"
+TEST_LOG=$(mktemp)
+if ! sudo docker build --progress=plain --target test "$SRC" >"$TEST_LOG" 2>&1; then
+  echo "Tests failed for $SHA; nothing was deployed. What failed:"
+  grep -E "FAILED|Error|assert|would reformat|[0-9]+ (passed|failed)" "$TEST_LOG" | sed 's/^#[0-9]* [0-9.]* //' | tail -25
+  rm -f "$TEST_LOG"
   exit 2
 fi
+rm -f "$TEST_LOG"
 echo "All tests passed"
 
 NEW_IMAGE="whos-knocking:$SHA"
