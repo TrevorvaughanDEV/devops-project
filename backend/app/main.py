@@ -14,19 +14,43 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
 
 from . import config, intel
 from .db import EVENT_COLUMNS, TOP_FIELDS, Store
 from .geo import GeoLookup
 from .live import Hub
+from .ratelimit import RateLimiter
 from .sensor import Sensor, load_host_keys
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("whos-knocking")
 
 PUBLIC_FIELDS = [c.strip() for c in EVENT_COLUMNS.split(",")]
+
+
+class TryLogin(BaseModel):
+    username: str = Field(min_length=1, max_length=32)
+    password: str = Field(min_length=1, max_length=64)
+
+
+def visitor_ip(request: Request) -> str:
+    """The browser's address. Behind Nginx the TCP peer is the proxy, so the real
+    address comes from X-Real-IP, which is trusted only from a private/loopback peer."""
+    peer = request.client.host if request.client else "0.0.0.0"
+    try:
+        trusted = not ipaddress.ip_address(peer).is_global
+    except ValueError:
+        trusted = False
+    header = request.headers.get("x-real-ip", "").strip()
+    if trusted and header:
+        try:
+            return str(ipaddress.ip_address(header))
+        except ValueError:
+            pass
+    return peer
 
 
 def create_app(
@@ -49,6 +73,8 @@ def create_app(
             hub.publish({k: event.get(k) for k in PUBLIC_FIELDS})
 
         app.state.record = record
+        # Per visitor: 5 a minute and 20 a day. Everyone together: 60 a minute.
+        app.state.try_limiter = RateLimiter([(5, 60), (20, 86400)], (60, 60))
         sensor = Sensor(record, settings.max_connections, settings.max_connections_per_ip)
         app.state.sensor = sensor
         if run_sensor:
@@ -141,6 +167,32 @@ def create_app(
             raise HTTPException(404, "This address hasn't tried to log in.")
         await intel.enrich(app.state.store, ip, settings.abuseipdb_key)
         return app.state.store.ip_detail(ip)
+
+    # --- website "try to break in" ------------------------------------------------
+
+    @app.post("/api/try")
+    async def try_login(body: TryLogin, request: Request) -> dict[str, Any]:
+        sensor = app.state.sensor
+        if sensor.port is None:
+            raise HTTPException(503, "The honeypot isn't running right now. Try again shortly.")
+        ip = visitor_ip(request)
+        wait = app.state.try_limiter.check(ip)
+        if wait:
+            raise HTTPException(
+                429,
+                f"That's enough guesses for now. Try again in {int(wait // 60) or 1} min.",
+                headers={"Retry-After": str(int(wait))},
+            )
+        try:
+            event = await sensor.web_attempt(ip, body.username, body.password)
+        except (OSError, TimeoutError) as exc:
+            logger.warning("Website login attempt failed: %s", exc)
+            raise HTTPException(502, "Couldn't reach the honeypot. Try again.") from exc
+        return {
+            "result": "denied",
+            "attempt": {k: event.get(k) for k in PUBLIC_FIELDS} if event else None,
+            "bots_today": app.state.store.summary(24)["attempts"],
+        }
 
     # --- live feed -------------------------------------------------------------
 

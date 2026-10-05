@@ -6,8 +6,10 @@ this side for them to break into: the only thing exposed is the SSH handshake,
 handled by the AsyncSSH library.
 """
 
+import asyncio
 import ipaddress
 import logging
+import socket
 import time
 from collections import Counter
 from collections.abc import Callable
@@ -81,6 +83,9 @@ class Sensor:
         self.max_connections = max_connections
         self.max_per_ip = max_per_ip
         self.active: Counter[str] = Counter()
+        # Website "try to break in" logins, keyed by the local port they connect from,
+        # so the sensor can credit them to the visitor instead of to 127.0.0.1.
+        self.pending: dict[int, dict[str, Any]] = {}
         self._server: asyncssh.SSHAcceptor | None = None
 
     def admit(self, ip: str) -> bool:
@@ -114,6 +119,47 @@ class Sensor:
             return None
         return self._server.sockets[0].getsockname()[1]
 
+    async def web_attempt(
+        self, visitor_ip: str, username: str, password: str, timeout: float = 10
+    ) -> dict[str, Any] | None:
+        """Make a real SSH login against this honeypot on a website visitor's behalf.
+
+        The guess goes through exactly the same handshake and recorder as an attack;
+        only the source address is swapped for the visitor's. Returns the recorded event.
+        """
+        if self.port is None:
+            raise RuntimeError("Honeypot is not running")
+        loop = asyncio.get_running_loop()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setblocking(False)
+        sock.bind(("127.0.0.1", 0))
+        local_port = sock.getsockname()[1]
+        entry: dict[str, Any] = {"ip": visitor_ip, "event": None}
+        self.pending[local_port] = entry
+        try:
+            await asyncio.wait_for(loop.sock_connect(sock, ("127.0.0.1", self.port)), timeout)
+            try:
+                conn = await asyncio.wait_for(
+                    asyncssh.connect(
+                        sock=sock,
+                        username=username,
+                        password=password,
+                        known_hosts=None,
+                        client_keys=None,
+                        agent_path=None,
+                        preferred_auth="password",
+                        client_version="trevorvaughan.dev_website",
+                    ),
+                    timeout,
+                )
+                conn.close()  # never reached: the honeypot rejects every login
+            except asyncssh.PermissionDenied:
+                pass
+        finally:
+            self.pending.pop(local_port, None)
+            sock.close()
+        return entry["event"]
+
     async def stop(self) -> None:
         if self._server:
             self._server.close()
@@ -126,10 +172,16 @@ class _HoneypotServer(asyncssh.SSHServer):
         self.ip = "unknown"
         self.client: str | None = None
         self.admitted = False
+        self.web: dict[str, Any] | None = None
 
     def connection_made(self, conn: asyncssh.SSHServerConnection) -> None:
         peer = conn.get_extra_info("peername") or ("unknown", 0)
         self.ip = _normalise_ip(str(peer[0]))
+        # Only a connection from inside this process (loopback, registered port) can
+        # claim to be a website visitor; outside attackers can't reach loopback.
+        if self.ip == "127.0.0.1" and peer[1] in self.sensor.pending:
+            self.web = self.sensor.pending[peer[1]]
+            self.ip = self.web["ip"]
         self.admitted = self.sensor.admit(self.ip)
         if not self.admitted:
             conn.abort()
@@ -147,17 +199,18 @@ class _HoneypotServer(asyncssh.SSHServer):
         return self.client
 
     def _record(self, username: str, password: str | None, method: str) -> None:
+        event = {
+            "ts": time.time(),
+            "ip": self.ip,
+            "username": _clean(username, MAX_USERNAME) or "",
+            "password": _clean(password, MAX_PASSWORD),
+            "method": "web" if self.web is not None else method,
+            "client": self._client_version(),
+        }
         try:
-            self.sensor.record(
-                {
-                    "ts": time.time(),
-                    "ip": self.ip,
-                    "username": _clean(username, MAX_USERNAME) or "",
-                    "password": _clean(password, MAX_PASSWORD),
-                    "method": method,
-                    "client": self._client_version(),
-                }
-            )
+            self.sensor.record(event)
+            if self.web is not None:
+                self.web["event"] = event
         except Exception:  # never let a storage error crash the SSH handshake
             logger.exception("Failed to record attempt from %s", self.ip)
 

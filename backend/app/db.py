@@ -56,6 +56,11 @@ EVENT_COLUMNS = (
 )
 
 
+# Attempts made through the website's "try to break in" box are stored with
+# method = 'web'. They show on the map and in the live log, but every statistic
+# below excludes them, so the numbers describe bots, not curious visitors.
+
+
 class Store:
     def __init__(self, path: Path | str):
         path = Path(path)
@@ -120,11 +125,13 @@ class Store:
         since = time.time() - hours * 3600
         window = self._one(
             "SELECT COUNT(*) AS attempts, COUNT(DISTINCT ip) AS ips,"
-            " COUNT(DISTINCT country) AS countries FROM attempts WHERE ts >= ?",
+            " COUNT(DISTINCT country) AS countries FROM attempts WHERE ts >= ? AND method != 'web'",
             (since,),
         )
-        total = self._one("SELECT COUNT(*) AS n, MIN(ts) AS first FROM attempts")
-        last = self._one("SELECT ts FROM attempts ORDER BY id DESC LIMIT 1")
+        total = self._one(
+            "SELECT COUNT(*) AS n, MIN(ts) AS first FROM attempts WHERE method != 'web'"
+        )
+        last = self._one("SELECT ts FROM attempts WHERE method != 'web' ORDER BY id DESC LIMIT 1")
         return {
             "hours": hours,
             "attempts": window["attempts"],
@@ -144,7 +151,7 @@ class Store:
         extra = ", MAX(country_name) AS label" if kind == "countries" else ""
         return self._all(
             f"SELECT {col} AS value, COUNT(*) AS count, COUNT(DISTINCT ip) AS ips{extra}"
-            f" FROM attempts WHERE ts >= ? AND {col} IS NOT NULL"
+            f" FROM attempts WHERE ts >= ? AND {col} IS NOT NULL AND method != 'web'"
             f" GROUP BY {col} ORDER BY count DESC LIMIT ?",
             (since, limit),
         )
@@ -163,7 +170,7 @@ class Store:
         since = time.time() - hours * 3600
         return self._all(
             "SELECT CAST(ts / 3600 AS INTEGER) * 3600 AS hour, COUNT(*) AS count"
-            " FROM attempts WHERE ts >= ? GROUP BY hour ORDER BY hour",
+            " FROM attempts WHERE ts >= ? AND method != 'web' GROUP BY hour ORDER BY hour",
             (since,),
         )
 
@@ -173,7 +180,7 @@ class Store:
         return self._all(
             "SELECT (CAST(strftime('%w', ts, 'unixepoch') AS INTEGER) + 6) % 7 AS weekday,"
             " CAST(strftime('%H', ts, 'unixepoch') AS INTEGER) AS hour, COUNT(*) AS count"
-            " FROM attempts WHERE ts >= ? GROUP BY weekday, hour",
+            " FROM attempts WHERE ts >= ? AND method != 'web' GROUP BY weekday, hour",
             (since,),
         )
 

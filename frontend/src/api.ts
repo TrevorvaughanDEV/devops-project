@@ -6,7 +6,7 @@ export type Attempt = {
   ip: string;
   username: string;
   password: string | null;
-  method: "password" | "publickey";
+  method: "password" | "publickey" | "web";
   client: string | null;
   country: string | null;
   country_name: string | null;
@@ -64,6 +64,22 @@ export async function get<T>(path: string): Promise<T> {
   }
   return r.json();
 }
+
+export async function post<T>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const detail = Array.isArray(data.detail) ? "Check the username and password and try again." : data.detail;
+    throw new ApiError(detail ?? `Request failed (${r.status})`);
+  }
+  return data as T;
+}
+
+export type TryResult = { result: "denied"; attempt: Attempt | null; bots_today: number };
 
 /** Fetch on mount and every `everyMs`; keeps the last good value on errors. */
 export function usePoll<T>(path: string, everyMs: number, bump = 0) {

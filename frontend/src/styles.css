@@ -308,3 +308,61 @@ main { max-width: 1320px; margin: 0 auto; padding: 0 var(--gutter); }
   .map-arc path { animation: fade 3.2s ease-in forwards; stroke-dasharray: none; stroke-dashoffset: 0; }
   .map-home-ring, .live-live .live-dot, .log-list li { animation: none; }
 }
+
+/* --- try to break in -------------------------------------------------------- */
+.try {
+  margin-top: 16px;
+  display: grid; gap: 14px 32px; align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 20px 22px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+}
+@media (min-width: 1000px) {
+  .try { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr); }
+  .try-result, .try-cli { grid-column: 1 / -1; }
+}
+.try-intro h2 {
+  margin: 0; font-size: 1.35rem; font-weight: 800; font-variation-settings: "wdth" 112; letter-spacing: -0.01em;
+}
+.try-intro p { margin: 4px 0 0; color: var(--ink-2); font-size: 0.95rem; max-width: 52ch; }
+.try-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.try-form label { display: grid; gap: 4px; flex: 1 1 150px; font-size: 0.85rem; color: var(--muted); }
+.try-form input {
+  font: inherit; font-family: var(--mono); font-size: 0.95rem; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--border); border-radius: 4px; padding: 9px 11px;
+  min-width: 0;
+}
+.try-form input:focus-visible { outline: 2px solid var(--home); outline-offset: 0; border-color: var(--home); }
+.try-form button {
+  font: inherit; font-weight: 700; cursor: pointer;
+  background: var(--signal); color: #fff; border: 0; border-radius: 4px; padding: 10px 18px;
+  flex: 0 0 auto;
+}
+.try-form button:hover { filter: brightness(1.08); }
+.try-form button:disabled { opacity: 0.6; cursor: progress; }
+.try-result p { margin: 0; }
+.try-result:empty { display: none; }
+.try-result strong { color: var(--signal); }
+.try-error { color: var(--signal); }
+.try-cli { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.try-cli code { color: var(--ink); background: var(--sea); padding: 2px 6px; border-radius: 3px; }
+.try-copy {
+  font: inherit; font-size: 0.82rem; cursor: pointer; margin-left: 4px;
+  background: transparent; color: var(--ink-2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 8px;
+}
+.try-copy:hover { border-color: var(--ink); color: var(--ink); }
+
+.tag {
+  display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 3px;
+  font-family: var(--sans); font-size: 0.72rem; font-weight: 600; line-height: 1.5;
+  background: var(--sea); color: var(--ink-2); vertical-align: 1px;
+}
+.tag-you { background: var(--home); color: #fff; }
+.log-list li.is-mine { background: color-mix(in srgb, var(--home) 10%, transparent); }
+.map-arc-mine path { stroke: var(--home); stroke-width: 2.2; }
+.map-arc-mine circle { fill: var(--home); }
+.map-arc-mine text {
+  fill: var(--home); font: 700 13px var(--sans);
+  paint-order: stroke; stroke: var(--land); stroke-width: 3px;
+  animation: fade 5.2s ease-in forwards;
+}

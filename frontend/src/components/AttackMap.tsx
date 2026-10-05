@@ -45,10 +45,11 @@ type Props = {
   meta: Meta | null;
   points: MapPoint[];
   arcs: Arc[];
+  mine: Set<number>;
   onSelect: (ip: string) => void;
 };
 
-export function AttackMap({ meta, points, arcs, onSelect }: Props) {
+export function AttackMap({ meta, points, arcs, mine, onSelect }: Props) {
   const [hover, setHover] = useState<MapPoint | null>(null);
   const home = meta ? ([meta.server.lon, meta.server.lat] as [number, number]) : null;
   const homeXY = home ? projection(home) : null;
@@ -99,9 +100,12 @@ export function AttackMap({ meta, points, arcs, onSelect }: Props) {
             const start = projection(a.from);
             return (
               d && (
-                <g key={a.key} className="map-arc">
+                <g key={a.key} className={mine.has(a.key) ? "map-arc map-arc-mine" : "map-arc"}>
                   <path d={d} pathLength={1} />
                   {start && <circle cx={start[0]} cy={start[1]} r={4} />}
+                  {start && mine.has(a.key) && (
+                    <text x={start[0]} y={start[1] - 10} textAnchor="middle">You</text>
+                  )}
                 </g>
               )
             );
