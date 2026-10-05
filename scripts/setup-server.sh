@@ -48,9 +48,10 @@ if ! swapon --show | grep -q /swapfile; then
   grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
 fi
 
-echo "==> Firewall: SSH, HTTP, HTTPS only"
+echo "==> Firewall: SSH, HTTP, HTTPS and the honeypot port"
 ufw allow OpenSSH >/dev/null
 ufw allow 'Nginx Full' >/dev/null
+ufw allow 2222/tcp >/dev/null  # honeypot
 ufw --force enable >/dev/null
 
 echo "==> TLS certificate for $DOMAIN"
