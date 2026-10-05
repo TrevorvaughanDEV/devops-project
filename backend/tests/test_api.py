@@ -118,3 +118,23 @@ def test_prune_removes_old_attempts(client):
     record(client, ts=time.time() - 100 * 86400)
     record(client)
     assert client.app.state.store.prune(90) == 1
+
+
+def test_backfill_locations(client):
+    store = client.app.state.store
+    record(client, ip="203.0.113.70")
+    assert store.unlocated_ips() == ["203.0.113.70"]
+    geo = {"country": "IE", "country_name": "Ireland", "city": "Dublin", "lat": 53.3, "lon": -6.3}
+    assert store.set_location("203.0.113.70", geo) == 1
+    assert store.unlocated_ips() == []
+    assert client.get("/api/map").json()[0]["city"] == "Dublin"
+
+
+def test_broken_geo_database_does_not_stop_the_app(tmp_path):
+    from app.geo import GeoLookup
+
+    bad = tmp_path / "city.mmdb"
+    bad.write_bytes(b"")
+    geo = GeoLookup(bad, tmp_path / "none.mmdb")
+    assert not geo.enabled
+    assert geo.lookup("8.8.8.8") == {}

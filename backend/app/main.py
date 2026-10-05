@@ -83,6 +83,15 @@ def create_app(
             )
 
         async def housekeeping() -> None:
+            # Attempts recorded while the geo database was missing get located now.
+            if geo.enabled:
+                fixed = 0
+                for ip in store.unlocated_ips():
+                    found = geo.lookup(ip)
+                    if found.get("country"):
+                        fixed += store.set_location(ip, found)
+                if fixed:
+                    logger.info("Added locations to %d earlier attempts", fixed)
             while True:
                 removed = store.prune(settings.retention_days)
                 if removed:

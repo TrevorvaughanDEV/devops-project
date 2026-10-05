@@ -12,19 +12,24 @@ RUN npm run build
 FROM python:3.12-slim AS geo
 WORKDIR /geo
 RUN python - <<'PY'
-import datetime, gzip, shutil, urllib.request
+import datetime, gzip, os, shutil, urllib.request
 today = datetime.date.today().replace(day=1)
 months = [today, (today - datetime.timedelta(days=1)).replace(day=1)]
 for kind, name in (("city", "city.mmdb"), ("asn", "asn.mmdb")):
     for m in months:
         url = f"https://download.db-ip.com/free/dbip-{kind}-lite-{m:%Y-%m}.mmdb.gz"
         try:
-            with urllib.request.urlopen(url, timeout=60) as r, open(name, "wb") as out:
+            # Some download hosts refuse Python's default user agent, so name ourselves.
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (whos-knocking build)"})
+            with urllib.request.urlopen(req, timeout=120) as r, open(name + ".part", "wb") as out:
                 shutil.copyfileobj(gzip.GzipFile(fileobj=r), out)
-            print("downloaded", url)
+            os.replace(name + ".part", name)  # never leave a half-written database behind
+            print("downloaded", url, os.path.getsize(name), "bytes")
             break
         except Exception as exc:
             print("could not fetch", url, exc)
+            if os.path.exists(name + ".part"):
+                os.remove(name + ".part")
 PY
 
 # --- 3. Runtime ---------------------------------------------------------------
