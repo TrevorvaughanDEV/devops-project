@@ -46,7 +46,8 @@ export function TryIt({ port, onAttempt }: Props) {
         <h2 id="try-title">Try to break in</h2>
         <p>
           Your guess is sent to the honeypot as a real SSH login, from this server, credited to you.
-          Everything you type is shown publicly, so don't use a real password.
+          This box always says no, even to the passwords that let bots in. Everything you type is shown
+          publicly, so don't use a real password.
         </p>
       </div>
 
@@ -72,7 +73,11 @@ export function TryIt({ port, onAttempt }: Props) {
             {a?.lat != null
               ? `Your attempt is on the map, flying in from ${place(a.city, a.country_name)}.`
               : "Your attempt is in the log; your location couldn't be placed on the map."}{" "}
-            Bots made {num(result.bots_today)} attempts in the last 24 hours, and none of them got in either.
+            {result.shell
+              ? "From a bot, that password would have opened the fake shell. "
+              : ""}
+            Bots made {num(result.bots_today)} attempts in the last 24 hours
+            {result.shell ? "." : "; only the ones using the very worst passwords got in, and only to a fake shell."}
           </p>
         )}
       </div>

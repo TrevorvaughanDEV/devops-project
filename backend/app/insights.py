@@ -7,6 +7,7 @@ import re
 import time
 from typing import Any
 
+from . import campaigns
 from .db import Store
 
 BOTS = "method != 'web'"
@@ -154,22 +155,26 @@ def build(store: Store, days: int = 7, now: float | None = None) -> list[dict[st
             })  # fmt: skip
 
     inside = store.query(
-        "SELECT COUNT(*) AS n, SUM(commands) AS cmds FROM sessions"
-        " WHERE ts >= ? AND ts < ? AND commands > 0",
+        "SELECT COUNT(*) AS n, SUM(commands > 0) AS active, SUM(commands) AS cmds"
+        " FROM sessions WHERE ts >= ? AND ts < ?",
         args,
     )[0]
     if inside["n"]:
+        active, cmds = inside["active"] or 0, inside["cmds"] or 0
         fetched = store.query(
             "SELECT COUNT(DISTINCT session) AS c FROM commands"
             " WHERE ts >= ? AND ts < ? AND urls != ''",
             args,
         )[0]["c"]
-        tail = f"; {_pct(fetched, inside['n'])}% tried to download something" if fetched else ""
+        text = f"{inside['n']:,} bots got into the fake shell with a weak password"
+        if active:
+            text += f"; {active:,} of them sent commands ({cmds:,} in total)"
+            if fetched:
+                text += f" and {_pct(fetched, active)}% of those tried to download something"
         out.append({
             "key": "inside",
             "stat": f"{inside['n']:,}",
-            "text": f"{inside['n']:,} bots got into the fake shell with a weak password and ran "
-                    f"{inside['cmds']:,} commands{tail}. None of it ever ran.",
+            "text": text + ". None of it ever ran.",
         })  # fmt: skip
     return out
 
@@ -212,4 +217,6 @@ def report(store: Store, days: int = 7, now: float | None = None) -> dict[str, A
         "orgs": top("org"),
         "top_attacker": attacker[0] if attacker else None,
         "insights": build(store, days, now),
+        "shell": store.shell_summary(days),
+        "campaigns": campaigns.find(store, days, limit=3) if days <= 30 else [],
     }

@@ -75,3 +75,11 @@ def test_rate_limiter_global_cap():
     assert rl.check("a", now=0) == 0
     assert rl.check("b", now=0) == 0
     assert rl.check("c", now=0) > 0
+
+
+def test_weak_password_from_the_website_is_still_refused(live_client):
+    r = live_client.post("/api/try", json={"username": "root", "password": "123456"}).json()
+    assert r["result"] == "denied" and r["shell"] is True
+    assert r["attempt"]["accepted"] == 0
+    other = live_client.post("/api/try", json={"username": "root", "password": "x7!kQ"}).json()
+    assert other["shell"] is False

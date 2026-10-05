@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePoll, type Report as ReportData } from "../api";
-import { flag, num } from "../format";
+import { ago, flag, num } from "../format";
 import { RankList } from "./RankList";
 
 const fmtDay = (iso: string, opts: Intl.DateTimeFormatOptions) =>
@@ -96,8 +96,13 @@ export function Report() {
             ) : (
               <p className="lede report-lede">
                 <b>{num(r.current.n)}</b> login attempts from <b>{num(r.current.ips)}</b> machines in{" "}
-                <b>{num(r.current.countries)}</b> countries. That's {change(r.current.n, r.previous.n)}, and
-                not one of them got in.
+                <b>{num(r.current.countries)}</b> countries. That's {change(r.current.n, r.previous.n)}.{" "}
+                {r.shell.logins > 0 ? (
+                  <><b>{num(r.shell.logins)}</b> got into the fake shell with a weak password and sent{" "}
+                  <b>{num(r.shell.commands)}</b> commands, none of which ran.</>
+                ) : (
+                  "None of them got in."
+                )}
               </p>
             )}
             <button type="button" className="try-copy report-share" onClick={share}>
@@ -131,6 +136,50 @@ export function Report() {
                   <RankList title="Countries" caption="This week" rows={r.countries} kind="country" empty="None yet." />
                   <RankList title="Networks" caption="This week" rows={r.orgs} kind="plain" empty="None yet." />
                 </div>
+              </section>
+            )}
+
+            {r.shell.active > 0 && (
+              <section className="report-block">
+                <h2>Inside the fake shell</h2>
+                <div className="ranks ranks-2">
+                  <RankList title="Most run commands" caption="This week" rows={r.shell.top_commands} kind="command" empty="None yet." />
+                  <section className="rank" aria-labelledby="rdl-title">
+                    <h3 id="rdl-title">What they tried to download</h3>
+                    <p className="rank-caption">Never fetched, and defanged so they can't be clicked</p>
+                    {r.shell.downloads.length === 0 ? (
+                      <p className="muted">No download attempts this week.</p>
+                    ) : (
+                      <ul className="downloads">
+                        {r.shell.downloads.map((d) => (
+                          <li key={d.url}>
+                            <code>{d.url}</code>
+                            <span className="muted small">{num(d.count)}× from {num(d.ips)} {d.ips === 1 ? "address" : "addresses"}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                </div>
+              </section>
+            )}
+
+            {r.campaigns.length > 0 && (
+              <section className="report-block">
+                <h2>Biggest botnets</h2>
+                <ul className="report-botnets">
+                  {r.campaigns.map((c) => (
+                    <li key={c.id}>
+                      <b>{num(c.ips)} machines</b> in {num(c.n_countries)} {c.n_countries === 1 ? "country" : "countries"}{" "}
+                      made {num(c.attempts)} attempts ({c.share}% of the week) from one list of{" "}
+                      {num(c.list_size)} distinctive passwords, such as{" "}
+                      {c.signature.slice(0, 3).map((s, i) => (
+                        <span key={i}>{i ? ", " : ""}<code>{s.username} / {s.password}</code></span>
+                      ))}
+                      . Last seen {ago(c.last_seen)}.
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 

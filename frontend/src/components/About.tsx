@@ -3,7 +3,7 @@ const PROJECTS = [
     name: "Who's Knocking? (this site)",
     href: "https://github.com/TrevorvaughanDEV/devops-project",
     link: "Source on GitHub",
-    body: "An SSH honeypot I wrote in Python, streaming real attacks to a React map. FastAPI, SQLite, Docker, Nginx, Terraform on Azure, and pull-based deploys that test, health-check and roll back on their own.",
+    body: "An SSH honeypot I wrote in Python, streaming real attacks to a React map. Weak passwords open a fake shell that records what bots do once inside, and a clustering step picks out botnets. FastAPI, SQLite, Docker, Nginx, Terraform on Azure, and pull-based deploys that test, health-check and roll back on their own.",
   },
   {
     name: "Server monitor",
@@ -15,7 +15,7 @@ const PROJECTS = [
     name: "Weekly attack report",
     href: "/report",
     link: "Read this week's report",
-    body: "A summary written automatically from the honeypot's data each week: what was tried, from where, and how it compares with the week before.",
+    body: "A summary written automatically from the honeypot's data each week: what was tried, from where, what bots did inside the fake shell, the biggest botnets, and how it compares with the week before.",
   },
 ];
 
@@ -26,8 +26,8 @@ export function About() {
         <h2 id="about-title">Built by Trevor Vaughan</h2>
         <p>
           I'm a Network Engineering student at TU Dublin, working towards cloud, DevOps and
-          security engineering. I built and run everything on this site myself: the honeypot, the API,
-          the map, the Azure server and the pipeline that deploys it.
+          security engineering. I built and run everything on this site myself: the honeypot and its fake shell,
+          the API, the map, the Azure server and the pipeline that deploys it.
         </p>
         <p>I'm open to internships in cloud, DevOps, networking and security.</p>
         <p className="about-links">

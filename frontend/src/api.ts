@@ -117,9 +117,15 @@ export type Report = {
   passwords: Ranked[]; usernames: Ranked[]; countries: Ranked[]; orgs: Ranked[];
   top_attacker: { ip: string; count: number; country: string | null; cc: string | null; org: string | null } | null;
   insights: Insight[];
+  shell: Omit<ShellData, "recent">;
+  campaigns: Campaign[];
 };
 
-export type TryResult = { result: "denied"; attempt: Attempt | null; bots_today: number };
+export type TryResult = {
+  result: "denied"; attempt: Attempt | null; bots_today: number;
+  /** true if a bot using this password would have been let into the fake shell */
+  shell: boolean;
+};
 
 /** Fetch on mount and every `everyMs`; keeps the last good value on errors. */
 export function usePoll<T>(path: string, everyMs: number, bump = 0) {

@@ -2,7 +2,7 @@
 
 [![CI/CD](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/ci.yml/badge.svg)](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/ci.yml)
 
-A live map of bots trying to break into my server, at **[trevorvaughan.dev](https://trevorvaughan.dev)**.
+A live SSH honeypot at **[trevorvaughan.dev](https://trevorvaughan.dev)**: a map of bots trying to break into my server, a fake shell that records what they do once they think they're in, and the botnets behind them.
 
 Every server on the internet is scanned within minutes of going online, and bots try
 default and leaked passwords against anything that answers SSH. This project leaves a
@@ -27,7 +27,7 @@ machines working through the same password list.
 - **Attacker profiles:** click any address for its location, network, everything it tried, its shell sessions, its botnet, and its AbuseIPDB reputation
 - **What the data says:** plain-English findings worked out from the past week, e.g. how many attempts go for `root`
 - **Try to break in:** visitors make a real SSH login against the honeypot from the page and watch it land on the map
-- **[Weekly report](https://trevorvaughan.dev/report):** a shareable summary of the week, compared with the week before
+- **[Weekly report](https://trevorvaughan.dev/report):** a shareable summary of the week (attacks, fake-shell activity, biggest botnets), compared with the week before
 - **Link previews:** `/og.png` draws a live map and 24-hour totals with Pillow, so a pasted link shows current numbers
 
 ## Architecture

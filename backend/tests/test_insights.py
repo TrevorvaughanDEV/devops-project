@@ -77,3 +77,8 @@ def test_rate_wording():
     assert insights._every(0.25) == "4 attempts every second"
     assert insights._every(30) == "one attempt every 30 seconds"
     assert insights._every(600) == "one attempt every 10 minutes"
+
+
+def test_report_includes_shell_and_botnets(client):
+    r = client.get("/api/report").json()
+    assert r["shell"]["logins"] == 0 and r["campaigns"] == []

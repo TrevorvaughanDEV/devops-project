@@ -266,6 +266,7 @@ def create_app(
             "result": "denied",
             "attempt": {k: event.get(k) for k in PUBLIC_FIELDS} if event else None,
             "bots_today": app.state.store.summary(24)["attempts"],
+            "shell": settings.shell_enabled and body.password in sensor.shell_passwords,
         }
 
     # --- live feed -------------------------------------------------------------

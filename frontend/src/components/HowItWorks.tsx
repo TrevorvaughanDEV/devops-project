@@ -1,15 +1,23 @@
 const STEPS = [
   {
     title: "A fake front door",
-    body: "A small SSH server I wrote in Python listens on the open internet. It looks like a normal Ubuntu box and writes down the username and password of every login attempt. Almost all are refused. The few that use the very worst passwords get a fake terminal that records every command; nothing typed there ever runs.",
+    body: "A small SSH server I wrote in Python listens on the open internet. It looks like a normal Ubuntu box and writes down the username and password of every login attempt. Almost all of them are refused.",
+  },
+  {
+    title: "A fake shell",
+    body: "The very worst passwords, like 123456, \"work\". The bot lands in an imitation Linux terminal that answers like the real thing, so it carries on with its script. Every command is recorded, but nothing ever runs and nothing is ever downloaded.",
   },
   {
     title: "Who is it?",
     body: "Each address is looked up in the DB-IP databases for its country, city and network. Opening an address also checks it against AbuseIPDB, where other people report attackers.",
   },
   {
+    title: "Spotting botnets",
+    body: "Machines that work through the same password list, with the same software, are grouped together. Passwords every bot tries are ignored, so the groups are linked by the unusual ones, even when a botnet splits its list between machines.",
+  },
+  {
     title: "Stored and streamed",
-    body: "Attempts go into SQLite and straight out to every open browser over a WebSocket, so the map moves the moment a bot knocks. FastAPI serves the API; this page is React.",
+    body: "Attempts and shell commands go into SQLite and straight out to every open browser over a WebSocket, so the map and the terminal move the moment a bot does. FastAPI serves the API; this page is React.",
   },
   {
     title: "It deploys itself",

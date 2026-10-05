@@ -139,9 +139,9 @@ export default function App() {
           <a className="wordmark" href="/">Who's knocking?</a>
           <nav aria-label="Sections">
             <a href="#tries">What they try</a>
-            <a href="#inside">Inside</a>
-            <a href="#botnets">Botnets</a>
+            <a href="#inside">Once inside</a>
             <a href="#where">Where from</a>
+            <a href="#botnets">Botnets</a>
             <a href="/report">Weekly report</a>
             <a href="#about">About me</a>
           </nav>

@@ -72,7 +72,7 @@ def render(summary: dict, points: list[dict], server: tuple[float, float]) -> by
     d.text((64, 62), "Who's knocking?", font=_font(68, 850, 112), fill=INK)
     d.text(
         (66, 152),
-        "A live map of bots trying to\nbreak into my server",
+        "Live: bots breaking into my server,\nand what they do once inside",
         font=_font(30, 450, 95),
         fill=INK_2,
         spacing=8,
