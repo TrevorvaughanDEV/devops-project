@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI
 
 on:
   push:
@@ -9,10 +9,11 @@ on:
 permissions:
   contents: read
 
-# Never run two deploys at once; a newer push waits for the current one.
+# CI only. Deployment is pull-based: the server checks main every two minutes and
+# deploys new commits itself (scripts/autodeploy.sh), running the same tests first.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   IMAGE: trevorvaughandev/devops-app
@@ -120,87 +121,3 @@ jobs:
         run: |
           docker push "$IMAGE:${{ github.sha }}"
           docker push "$IMAGE:latest"
-
-  deploy:
-    name: Deploy to cloud VM
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-    env:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-    steps:
-      # With no server configured (e.g. between hosts), skip the rollout instead of
-      # failing, so test and build results still show on the badge.
-      - name: Check a deploy target is configured
-        id: target
-        run: |
-          if [ -n "$DEPLOY_HOST" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::DEPLOY_HOST secret not set; image built and pushed, rollout skipped."
-          fi
-
-      - name: Roll out new container with health check and rollback
-        if: steps.target.outputs.ready == 'true'
-        uses: appleboy/ssh-action@v1.0.0
-        env:
-          NEW_IMAGE: ${{ env.IMAGE }}:${{ github.sha }}
-          ABUSEIPDB_KEY: ${{ secrets.ABUSEIPDB_KEY }}
-          HONEYPOT_PORT: ${{ vars.HONEYPOT_PORT || '2222' }}
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          port: ${{ vars.ADMIN_SSH_PORT || '22' }}
-          username: ${{ secrets.DEPLOY_USER || 'ubuntu' }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: NEW_IMAGE,ABUSEIPDB_KEY,HONEYPOT_PORT
-          script: |
-            set -euo pipefail
-            NAME=devops-monitor
-            VOLUME=devops-monitor-data
-
-            run_container() {
-              sudo docker run -d --name "$NAME" --restart unless-stopped \
-                -p 127.0.0.1:5000:5000 \
-                -p "$HONEYPOT_PORT":2222 \
-                -e PUBLIC_SENSOR_PORT="$HONEYPOT_PORT" \
-                -e ABUSEIPDB_KEY="${ABUSEIPDB_KEY:-}" \
-                --memory 400m \
-                -v "$VOLUME":/app/data \
-                "$1"
-            }
-
-            healthy() {
-              for i in $(seq 1 20); do
-                curl -fsS http://127.0.0.1:5000/healthz >/dev/null && return 0
-                sleep 3
-              done
-              return 1
-            }
-
-            sudo docker pull "$NEW_IMAGE"
-
-            OLD=$(sudo docker ps -aq --filter "name=^${NAME}$")
-            PREV_IMAGE=""
-            [ -n "$OLD" ] && PREV_IMAGE=$(sudo docker inspect --format '{{.Config.Image}}' "$OLD")
-
-            # The app runs as uid 1000 and writes its database and SSH host keys here.
-            sudo docker run --rm -v "$VOLUME":/data alpine chown -R 1000:1000 /data
-
-            sudo docker rm -f "$NAME" 2>/dev/null || true
-            run_container "$NEW_IMAGE"
-
-            if healthy; then
-              echo "Deployed $NEW_IMAGE"
-              sudo docker image prune -f
-            else
-              echo "Health check failed for $NEW_IMAGE"
-              sudo docker logs --tail 50 "$NAME" || true
-              sudo docker rm -f "$NAME"
-              if [ -n "$PREV_IMAGE" ]; then
-                echo "Rolling back to $PREV_IMAGE"
-                run_container "$PREV_IMAGE"
-              fi
-              exit 1
-            fi
