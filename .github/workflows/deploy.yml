@@ -79,21 +79,36 @@ jobs:
           docker push "$IMAGE:latest"
 
   deploy:
-    name: Deploy to AWS EC2
+    name: Deploy to cloud VM
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
     steps:
+      # With no server configured (e.g. between hosts), skip the rollout instead of
+      # failing, so test and build results still show on the badge.
+      - name: Check a deploy target is configured
+        id: target
+        run: |
+          if [ -n "$DEPLOY_HOST" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DEPLOY_HOST secret not set; image built and pushed, rollout skipped."
+          fi
+
       - name: Roll out new container with health check and rollback
+        if: steps.target.outputs.ready == 'true'
         uses: appleboy/ssh-action@v1.0.0
         env:
           APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
           NEW_IMAGE: ${{ env.IMAGE }}:${{ github.sha }}
         with:
-          host: ${{ secrets.AWS_HOST }}
-          username: ubuntu
-          key: ${{ secrets.AWS_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER || 'ubuntu' }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: APP_SECRET_KEY,NEW_IMAGE
           script: |
             set -euo pipefail
