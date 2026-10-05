@@ -1,121 +1,133 @@
-# DevOps Monitor
+# Who's Knocking?
 
 [![CI/CD](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/deploy.yml/badge.svg)](https://github.com/TrevorvaughanDEV/devops-project/actions/workflows/deploy.yml)
 
-A server-monitoring dashboard I built and run myself at **[trevorvaughan.dev](https://trevorvaughan.dev)**.
-It reports live CPU, memory and disk usage from the host, behind a login, and every push to
-`main` is linted, tested, security-scanned, containerised and rolled out to a cloud VM with an
-automatic rollback if the new version fails its health check.
+A live map of bots trying to break into my server, at **[trevorvaughan.dev](https://trevorvaughan.dev)**.
 
-It started on AWS EC2 and now runs on an Azure VM. Moving clouds meant changing
-three secrets, because nothing in the pipeline is tied to a provider.
+Every server on the internet is scanned within minutes of going online, and bots try
+default and leaked passwords against anything that answers SSH. This project leaves a
+door open on purpose: an SSH **honeypot** I wrote in Python records the username and
+password of every login attempt, refuses them all, and streams each one to a world map in
+the browser as it happens.
 
-The app itself is deliberately small. The point of the project is everything around it:
-the pipeline, the container, the server, TLS, and making deploys safe.
+![Screenshot of the live map (demo data)](docs/screenshot.png)
+<sub>Screenshot taken with demo data. The live site shows real attempts.</sub>
+
+## What it shows
+
+- **Live map:** an arc from the attacker's location to the server for every attempt, in real time over a WebSocket
+- **Login log:** time, address, country and the exact username/password tried
+- **What they try:** the most common passwords, usernames and SSH client software
+- **Where from:** countries and the networks (cloud providers, ISPs) the attacks come from
+- **When:** a day-by-hour heatmap of attack volume
+- **Attacker profiles:** click any address for its location, network, everything it tried, and its AbuseIPDB reputation
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    dev[git push to main] --> gha
-
-    subgraph gha[GitHub Actions]
-        direction TB
-        t[Lint · unit tests · pip-audit] --> b[Docker build + smoke test]
-        b --> p[Push image to Docker Hub<br/>tagged with commit SHA]
-    end
-
-    p --> ssh[SSH deploy job]
-
-    subgraph vm[Azure VM · Ubuntu]
-        direction TB
-        nginx[Nginx<br/>TLS via Let's Encrypt] --> app[Gunicorn + Flask<br/>container :5000]
-        app --> vol[(Docker volume<br/>SQLite)]
-    end
-
-    ssh -->|pull · run · /healthz · rollback| app
+    bot[Bots on the internet] -->|SSH :2222| sensor
     user[Browser] -->|HTTPS 443| nginx
+
+    subgraph vm[Azure VM · Ubuntu 24.04 · Spain Central]
+        nginx[Nginx<br/>TLS, security headers] --> api
+        subgraph container[Docker container]
+            sensor[Honeypot sensor<br/>AsyncSSH] --> rec[Record + enrich<br/>DB-IP geo/ASN]
+            rec --> db[(SQLite<br/>Docker volume)]
+            rec --> hub[Live hub]
+            api[FastAPI<br/>REST + WebSocket] --> db
+            hub --> api
+        end
+    end
+
+    api -.->|on demand| abuse[AbuseIPDB]
 ```
+
+The sensor, API and live feed share one asyncio event loop, so an attempt travels from the
+SSH handshake to every open browser in milliseconds without a message broker.
+
+## Why the honeypot is safe
+
+- **Low interaction.** Password and public-key auth always fail. There is no shell,
+  no command execution and no port forwarding to exploit; the attack surface is the SSH
+  handshake, handled by the AsyncSSH library.
+- **Contained.** It runs as a non-root user in a container with a 400 MB memory cap.
+  `/app/data` is its only writable path. It listens on 2222 inside the container, so it never needs root to bind a port.
+- **Rate-limited.** It caps connections per IP and in total, so a flood can't exhaust the VM.
+- **Sanitised.** Usernames and passwords are length-capped and stripped of control
+  characters before storage. The frontend renders them as text, never HTML.
+- **Real SSH stays separate.** Admin SSH is key-only on its own port, and the web app is
+  bound to `127.0.0.1` behind Nginx.
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| Honeypot | Python, [AsyncSSH](https://asyncssh.readthedocs.io/), persistent host keys, OpenSSH-like banner |
+| API | FastAPI, REST + WebSocket, SQLite (WAL) |
+| Enrichment | DB-IP Lite city and ASN databases (offline), AbuseIPDB (optional, cached) |
+| Frontend | React + TypeScript + Vite, d3-geo map, no UI framework |
+| Packaging | Multi-stage Docker build (Node → geo download → slim Python), non-root |
+| Infrastructure | Azure VM, NSG, static IP, described in **Terraform** (`infra/terraform`) |
+| Edge | Nginx, Let's Encrypt, HSTS, Content-Security-Policy |
+| CI/CD | GitHub Actions: lint, tests, dependency audits, Terraform validate, image smoke test, deploy with health check and automatic rollback |
 
 ## The pipeline
 
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs three jobs:
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
 
-| Job | What it does | Why |
-|---|---|---|
-| **test** | `ruff` lint and format check, `pytest`, `pip-audit` on pinned dependencies | Broken or vulnerable code never reaches the image |
-| **build** | Builds the image, starts it, and polls `/healthz` before pushing | Catches images that build but don't boot |
-| **deploy** | Pulls the SHA-tagged image on the VM, swaps the container, waits for `/healthz`, rolls back to the previous image on failure | A bad release can't take the site down |
+| Job | What it does |
+|---|---|
+| **backend** | `ruff` lint and format, `pytest` (including a real SSH login against the honeypot), `pip-audit` |
+| **frontend** | `npm ci`, TypeScript typecheck, production build, `npm audit` |
+| **terraform** | `terraform fmt -check` and `terraform validate` |
+| **build** | Builds the image, then checks it boots, serves the page and API, and answers SSH with an OpenSSH banner |
+| **deploy** | Pulls the SHA-tagged image on the VM, swaps the container, waits for `/healthz`, rolls back on failure |
 
-Pull requests run `test` and `build` only, so nothing is deployed until it is merged.
-
-## Security decisions
-
-- **No secret in code.** The image sets `APP_ENV=production`, and in production the app
-  refuses to start without `SECRET_KEY`. The key comes from a GitHub Actions secret, or is
-  generated once on the server and never leaves it.
-- **Passwords** are salted and hashed with Werkzeug; queries are parameterised.
-- **Session cookies** are `HttpOnly`, `SameSite=Lax` and `Secure` in production.
-- **Sign-up is open** on the public instance so visitors can try it; set `ALLOW_SIGNUP=false` to close it.
-- **Non-root container**, with `/app/data` as its only writable path.
-- **Dependencies are pinned** and scanned for known CVEs on every push.
-- **Nginx** redirects HTTP to HTTPS and sets HSTS and other security headers.
+Pull requests run everything except the deploy.
 
 ## Run it locally
 
 ```bash
-python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+# Backend (API on :8000, honeypot on :2222)
+cd backend
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
-python app.py                                         # http://localhost:5000
+DATABASE_PATH=data/demo.db python scripts/demo_data.py   # optional: fake data to look at
+DATABASE_PATH=data/demo.db uvicorn app.main:app --reload
+
+# Frontend (http://localhost:5173, proxies /api to :8000)
+cd frontend && npm install && npm run dev
+
+# Try to "break in" yourself; it'll show up live
+ssh -p 2222 root@localhost
 ```
 
-Or with Docker:
-
-```bash
-export SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
-docker compose up --build
-```
-
-## Tests
-
-```bash
-pytest -v
-ruff check . && ruff format --check .
-```
-
-The tests cover the health check, the metrics API, alert thresholds, sign-up and login,
-password hashing, protected routes, and that production fails fast without a secret key.
+Tests: `cd backend && pytest -v`
 
 ## API
 
-| Endpoint | Auth | Returns |
-|---|---|---|
-| `GET /healthz` | – | `{"status": "ok"}`, used by Docker and the deploy job |
-| `GET /api/system_info?server=server1` | – | CPU, memory, disk, recent history and alerts |
-| `GET /api/visits` | – | Total page visits |
+| Endpoint | Returns |
+|---|---|
+| `GET /api/summary?hours=24` | Attempts, unique IPs and countries in the window |
+| `GET /api/recent?limit=50` | Latest attempts |
+| `GET /api/top/{passwords,usernames,countries,orgs,clients}` | Ranked lists |
+| `GET /api/map?hours=24` | One point per attacking IP with location and count |
+| `GET /api/heatmap?days=30` | Attempts by weekday and hour (UTC) |
+| `GET /api/ip/{ip}` | Everything one address tried, plus reputation |
+| `WS /api/live` | Every new attempt as it happens |
+| `GET /api/docs` | Interactive OpenAPI docs |
 
-## Project layout
+## History
 
-```
-app.py                  Flask app
-templates/              Dashboard pages
-tests/                  Unit tests
-Dockerfile              Production image (Gunicorn, non-root, health check)
-docker-compose.yml      Local run
-.github/workflows/      CI/CD pipeline
-docs/deployment.md      Server setup, secrets, backups
-docs/nginx.conf         Reverse proxy and TLS config
-```
+Version 1 was a Flask server-monitoring dashboard on AWS EC2. When the AWS free plan ended
+I moved it to Azure by changing three deploy secrets, then rebuilt it as this honeypot.
+Deployment notes are in [`docs/deployment.md`](docs/deployment.md).
 
-## What's next
+## Credits
 
-- [ ] Provision the VM, network security group and DNS with **Terraform** instead of by hand
-- [ ] Ship metrics to **Prometheus** and graph them in **Grafana**
-- [ ] A lightweight agent so the dashboard can watch more than one real server
-- [ ] Move from SQLite to a managed **PostgreSQL** database
-- [ ] Container image scanning with Trivy
+IP geolocation by [DB-IP](https://db-ip.com) (CC BY 4.0). Map data from Natural Earth via
+`world-atlas`.
 
-## Author
-
-**Trevor Vaughan**, Networking Technology student at TU Dublin, working towards cloud,
-DevOps and security engineering. [trevorvaughan.dev](https://trevorvaughan.dev)
+**Trevor Vaughan**, Network Engineering student at TU Dublin ·
+[LinkedIn](https://www.linkedin.com/in/trevor-vaughan-1739912ab/)
