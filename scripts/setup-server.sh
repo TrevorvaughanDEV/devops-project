@@ -4,8 +4,9 @@
 # and turns on the firewall and automatic security updates.
 #
 # Point the domain's A records at the VM first, then run on the VM:
-#   curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/setup-server.sh \
-#     | sudo bash -s -- trevorvaughan.dev you@example.com
+#   curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/setup-server.sh -o setup.sh
+#   sudo bash setup.sh trevorvaughan.dev you@example.com
+# (Download first rather than piping into bash: installers that read stdin would eat the script.)
 #
 # After this, the first push to main (or re-running the workflow) deploys the app.
 set -euo pipefail
@@ -28,9 +29,9 @@ fi
 
 echo "==> Packages and automatic security updates"
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -q
-apt-get install -yq nginx certbot ufw unattended-upgrades curl
-dpkg-reconfigure -f noninteractive unattended-upgrades
+apt-get update -q </dev/null
+apt-get install -yq nginx certbot ufw unattended-upgrades curl </dev/null
+dpkg-reconfigure -f noninteractive unattended-upgrades </dev/null
 
 echo "==> Docker"
 if ! command -v docker >/dev/null; then
