@@ -102,6 +102,19 @@ matters, so you can't lock yourself out:
 5. Set the GitHub variables `ADMIN_SSH_PORT=22022` and `HONEYPOT_PORT=22`, then re-run
    the deploy.
 
+## Deploying by hand
+
+If GitHub Actions is slow or down, deploy straight from the server with
+[`scripts/deploy.sh`](../scripts/deploy.sh). It does the same build, health check and
+automatic rollback as the pipeline:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TrevorvaughanDEV/devops-project/main/scripts/deploy.sh -o ~/deploy && chmod +x ~/deploy
+./deploy
+```
+
+Optional settings such as `ABUSEIPDB_KEY=...` go in `~/.whos-knocking.env`.
+
 ## Backups
 
 ```bash
