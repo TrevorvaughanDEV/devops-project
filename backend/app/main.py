@@ -15,10 +15,10 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from . import config, intel
+from . import config, insights, intel, og
 from .db import EVENT_COLUMNS, TOP_FIELDS, Store
 from .geo import GeoLookup
 from .live import Hub
@@ -176,6 +176,31 @@ def create_app(
             raise HTTPException(404, "This address hasn't tried to log in.")
         await intel.enrich(app.state.store, ip, settings.abuseipdb_key)
         return app.state.store.ip_detail(ip)
+
+    @app.get("/api/insights")
+    def get_insights(days: int = Query(7, ge=1, le=90)) -> list[dict[str, str]]:
+        return insights.build(app.state.store, days)
+
+    @app.get("/api/report")
+    def get_report(days: int = Query(7, ge=1, le=30)) -> dict[str, Any]:
+        return insights.report(app.state.store, days)
+
+    # --- link preview image ----------------------------------------------------------
+
+    @app.get("/og.png", include_in_schema=False)
+    def og_image() -> Response:
+        store = app.state.store
+        png = og.cached(
+            "home",
+            lambda: og.render(
+                store.summary(24),
+                store.map_points(24),
+                (settings.server_lat, settings.server_lon),
+            ),
+        )
+        return Response(
+            png, media_type="image/png", headers={"Cache-Control": "public, max-age=600"}
+        )
 
     # --- website "try to break in" ------------------------------------------------
 

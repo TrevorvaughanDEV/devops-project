@@ -26,7 +26,7 @@ export function RankList({ title, caption, rows, kind, empty }: Props) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.value} title={`${num(r.count)} attempts from ${num(r.ips)} addresses`}>
+              <tr key={r.value} title={r.ips ? `${num(r.count)} attempts from ${num(r.ips)} addresses` : `${num(r.count)} attempts`}>
                 <th scope="row">
                   <span className="rank-bar" style={{ width: `${(r.count / max) * 100}%` }} aria-hidden="true" />
                   {kind === "country" ? (

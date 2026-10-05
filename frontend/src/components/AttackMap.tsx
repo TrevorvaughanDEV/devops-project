@@ -5,6 +5,7 @@ import type { Topology, GeometryCollection } from "topojson-specification";
 import world from "world-atlas/countries-110m.json";
 import type { Attempt, MapPoint, Meta } from "../api";
 import { ago, flag, num, place } from "../format";
+import isoNumeric from "../iso-numeric.json";
 
 const W = 960;
 const H = 470;
@@ -22,7 +23,8 @@ const projection = geoNaturalEarth1().fitExtent(
 const path = geoPath(projection);
 const spherePath = path({ type: "Sphere" }) ?? "";
 const graticulePath = path(geoGraticule10()) ?? "";
-const landPath = path(countries) ?? "";
+const countryPaths = countries.features.map((f) => ({ id: String(f.id ?? ""), d: path(f) ?? "" }));
+const numericOf = isoNumeric as Record<string, string>;
 const borderPath = path(borders) ?? "";
 
 export type Arc = { key: number; from: [number, number]; ip: string };
@@ -46,14 +48,28 @@ type Props = {
   points: MapPoint[];
   arcs: Arc[];
   mine: Set<number>;
+  /** Attempts per country (ISO alpha-2), for shading */
+  countries: { value: string; count: number }[];
   onSelect: (ip: string) => void;
 };
 
-export function AttackMap({ meta, points, arcs, mine, onSelect }: Props) {
+export function AttackMap({ meta, points, arcs, mine, countries: byCountry, onSelect }: Props) {
   const [hover, setHover] = useState<MapPoint | null>(null);
   const home = meta ? ([meta.server.lon, meta.server.lat] as [number, number]) : null;
   const homeXY = home ? projection(home) : null;
   const max = Math.max(1, ...points.map((p) => p.count));
+
+  // Shade countries on a 5-step scale relative to the busiest one (square-root, so a
+  // few heavy hitters don't wash everyone else out).
+  const shade = useMemo(() => {
+    const top = Math.max(1, ...byCountry.map((c) => c.count));
+    const m = new Map<string, number>();
+    for (const c of byCountry) {
+      const id = numericOf[c.value];
+      if (id) m.set(id, Math.max(1, Math.ceil(Math.sqrt(c.count / top) * 5)));
+    }
+    return m;
+  }, [byCountry]);
 
   const placed = useMemo(
     () =>
@@ -70,7 +86,9 @@ export function AttackMap({ meta, points, arcs, mine, onSelect }: Props) {
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-hidden="false">
         <path d={spherePath} className="map-sea" />
         <path d={graticulePath} className="map-grid" />
-        <path d={landPath} className="map-land" />
+        {countryPaths.map((c, i) => (
+          <path key={c.id || i} d={c.d} className={`map-land${shade.has(c.id) ? ` shade-${shade.get(c.id)}` : ""}`} />
+        ))}
         <path d={borderPath} className="map-border" />
 
         {placed.map(({ p, xy }, i) => {

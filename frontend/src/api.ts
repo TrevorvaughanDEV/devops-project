@@ -36,7 +36,7 @@ export type Meta = {
   viewers: number;
 };
 
-export type Ranked = { value: string; count: number; ips: number; label?: string };
+export type Ranked = { value: string; count: number; ips?: number; label?: string };
 export type MapPoint = {
   ip: string; lat: number; lon: number; country: string | null;
   city: string | null; count: number; last: number;
@@ -78,6 +78,18 @@ export async function post<T>(path: string, body: unknown): Promise<T> {
   }
   return data as T;
 }
+
+export type Insight = { key: string; stat: string; text: string };
+
+export type Report = {
+  days: number; start: number; end: number;
+  current: { n: number; ips: number; countries: number };
+  previous: { n: number; ips: number; countries: number };
+  by_day: { day: string; count: number }[];
+  passwords: Ranked[]; usernames: Ranked[]; countries: Ranked[]; orgs: Ranked[];
+  top_attacker: { ip: string; count: number; country: string | null; cc: string | null; org: string | null } | null;
+  insights: Insight[];
+};
 
 export type TryResult = { result: "denied"; attempt: Attempt | null; bots_today: number };
 
