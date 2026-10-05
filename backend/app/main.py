@@ -17,13 +17,15 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
-from . import config, insights, intel, og
+from . import campaigns, config, insights, intel, og
 from .db import EVENT_COLUMNS, TOP_FIELDS, Store
 from .geo import GeoLookup
 from .live import Hub
 from .ratelimit import RateLimiter
 from .sensor import Sensor, load_host_keys
+from .shell import defang_urls
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("whos-knocking")
@@ -72,10 +74,32 @@ def create_app(
             event["id"] = store.add_attempt(event)
             hub.publish({k: event.get(k) for k in PUBLIC_FIELDS})
 
+        def record_shell(kind: str, event: dict[str, Any]) -> None:
+            if kind == "open":
+                event.update(geo.lookup(event["ip"]))
+                store.open_session(event)
+            elif kind == "command":
+                event["id"] = store.add_command(event)
+                hub.publish(
+                    {
+                        **{k: event[k] for k in ("id", "session", "ts", "ip")},
+                        "command": defang_urls(event["command"]),
+                    },
+                    "command",
+                )
+            elif kind == "close":
+                store.close_session(event["session"], event["ts"])
+
         app.state.record = record
+        app.state.record_shell = record_shell
         # Per visitor: 5 a minute and 20 a day. Everyone together: 60 a minute.
         app.state.try_limiter = RateLimiter([(5, 60), (20, 86400)], (60, 60))
-        sensor = Sensor(record, settings.max_connections, settings.max_connections_per_ip)
+        sensor = Sensor(
+            record,
+            settings.max_connections,
+            settings.max_connections_per_ip,
+            record_shell=record_shell if settings.shell_enabled else None,
+        )
         app.state.sensor = sensor
         if run_sensor:
             await sensor.start(
@@ -175,7 +199,23 @@ def create_app(
         if app.state.store.ip_detail(ip) is None:
             raise HTTPException(404, "This address hasn't tried to log in.")
         await intel.enrich(app.state.store, ip, settings.abuseipdb_key)
-        return app.state.store.ip_detail(ip)
+        detail = app.state.store.ip_detail(ip)
+        # Clustering can take a second on a cache miss; keep it off the event loop
+        detail["campaign"] = await run_in_threadpool(campaigns.membership, app.state.store, ip)
+        return detail
+
+    @app.get("/api/shell")
+    def shell(days: int = Query(7, ge=1, le=30)) -> dict[str, Any]:
+        """What bots did inside the fake shell. URLs are defanged everywhere."""
+        store = app.state.store
+        out = store.shell_summary(days)
+        out["recent"] = store.sessions(limit=8, since=time.time() - days * 86400)
+        return out
+
+    @app.get("/api/campaigns")
+    def get_campaigns() -> list[dict[str, Any]]:
+        """Botnets seen in the past 7 days."""
+        return campaigns.find(app.state.store)
 
     @app.get("/api/insights")
     def get_insights(days: int = Query(7, ge=1, le=90)) -> list[dict[str, str]]:
@@ -240,8 +280,7 @@ def create_app(
         try:
             while True:
                 try:
-                    event = await asyncio.wait_for(q.get(), timeout=25)
-                    await ws.send_json({"type": "attempt", "data": event})
+                    await ws.send_json(await asyncio.wait_for(q.get(), timeout=25))
                 except TimeoutError:
                     await ws.send_json({"type": "ping"})  # keeps proxies from idling us out
         except (WebSocketDisconnect, RuntimeError):

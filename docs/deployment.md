@@ -94,7 +94,8 @@ minutes. From then on, anything merged to `main` goes live by itself.
 A commit that fails is not retried; the next push gets a fresh attempt.
 
 Optional settings go in `~/.whos-knocking.env`, one per line. For example,
-`ABUSEIPDB_KEY=...` turns on attacker reputation scores.
+`ABUSEIPDB_KEY=...` turns on attacker reputation scores, and `SHELL_ENABLED=false` turns
+off the fake shell, so every login is refused again.
 
 ## GitHub secrets
 

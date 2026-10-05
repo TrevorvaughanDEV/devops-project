@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .shell import defang, defang_urls
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS attempts (
     id        INTEGER PRIMARY KEY,
@@ -29,6 +31,38 @@ CREATE TABLE IF NOT EXISTS attempts (
 );
 CREATE INDEX IF NOT EXISTS idx_attempts_ts ON attempts(ts);
 CREATE INDEX IF NOT EXISTS idx_attempts_ip ON attempts(ip, ts);
+
+-- Bots that got into the fake shell, and what they typed there
+CREATE TABLE IF NOT EXISTS sessions (
+    id        TEXT PRIMARY KEY,
+    ts        REAL NOT NULL,
+    ended     REAL,
+    ip        TEXT NOT NULL,
+    username  TEXT,
+    password  TEXT,
+    client    TEXT,
+    commands  INTEGER NOT NULL DEFAULT 0,
+    country   TEXT,
+    country_name TEXT,
+    city      TEXT,
+    lat       REAL,
+    lon       REAL,
+    asn       INTEGER,
+    org       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_ts ON sessions(ts);
+CREATE INDEX IF NOT EXISTS idx_sessions_ip ON sessions(ip);
+
+CREATE TABLE IF NOT EXISTS commands (
+    id       INTEGER PRIMARY KEY,
+    session  TEXT NOT NULL,
+    ts       REAL NOT NULL,
+    ip       TEXT NOT NULL,
+    command  TEXT NOT NULL,
+    urls     TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_commands_session ON commands(session, id);
+CREATE INDEX IF NOT EXISTS idx_commands_ts ON commands(ts);
 
 CREATE TABLE IF NOT EXISTS intel (
     ip       TEXT PRIMARY KEY,
@@ -52,8 +86,10 @@ TOP_FIELDS = {
 }
 
 EVENT_COLUMNS = (
-    "id, ts, ip, username, password, method, client, country, country_name, city, lat, lon, org"
+    "id, ts, ip, username, password, method, client, country, country_name, city, lat, lon, org,"
+    " accepted"
 )
+GEO_COLUMNS = ("country", "country_name", "city", "lat", "lon", "asn", "org")
 
 
 # Attempts made through the website's "try to break in" box are stored with
@@ -72,6 +108,13 @@ class Store:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        cols = {r[1] for r in self._db.execute("PRAGMA table_info(attempts)")}
+        if "accepted" not in cols:  # added with the fake shell
+            self._db.execute("ALTER TABLE attempts ADD COLUMN accepted INTEGER NOT NULL DEFAULT 0")
+            self._db.commit()
 
     def close(self) -> None:
         with self._lock:
@@ -94,8 +137,9 @@ class Store:
     def add_attempt(self, event: dict[str, Any]) -> int:
         cols = (
             "ts", "ip", "username", "password", "method", "client",
-            "country", "country_name", "city", "lat", "lon", "asn", "org",
+            "country", "country_name", "city", "lat", "lon", "asn", "org", "accepted",
         )  # fmt: skip
+        event.setdefault("accepted", 0)
         with self._lock:
             cur = self._db.execute(
                 f"INSERT INTO attempts ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
@@ -103,6 +147,34 @@ class Store:
             )
             self._db.commit()
             return int(cur.lastrowid)
+
+    def open_session(self, event: dict[str, Any]) -> None:
+        cols = ("id", "ts", "ip", "username", "password", "client", *GEO_COLUMNS)
+        with self._lock:
+            self._db.execute(
+                f"INSERT OR IGNORE INTO sessions ({', '.join(cols)})"
+                f" VALUES ({', '.join('?' * len(cols))})",
+                (event["session"], *(event.get(c) for c in cols[1:])),
+            )
+            self._db.commit()
+
+    def add_command(self, event: dict[str, Any]) -> int:
+        with self._lock:
+            cur = self._db.execute(
+                "INSERT INTO commands (session, ts, ip, command, urls) VALUES (?, ?, ?, ?, ?)",
+                (event["session"], event["ts"], event["ip"], event["command"], event["urls"]),
+            )
+            self._db.execute(
+                "UPDATE sessions SET commands = commands + 1, ended = ? WHERE id = ?",
+                (event["ts"], event["session"]),
+            )
+            self._db.commit()
+            return int(cur.lastrowid)
+
+    def close_session(self, session: str, ts: float) -> None:
+        with self._lock:
+            self._db.execute("UPDATE sessions SET ended = ? WHERE id = ?", (ts, session))
+            self._db.commit()
 
     def unlocated_ips(self, limit: int = 5000) -> list[str]:
         return [
@@ -127,6 +199,8 @@ class Store:
         cutoff = time.time() - older_than_days * 86400
         with self._lock:
             cur = self._db.execute("DELETE FROM attempts WHERE ts < ?", (cutoff,))
+            self._db.execute("DELETE FROM commands WHERE ts < ?", (cutoff,))
+            self._db.execute("DELETE FROM sessions WHERE ts < ?", (cutoff,))
             self._db.commit()
             return cur.rowcount
 
@@ -229,7 +303,73 @@ class Store:
                 (ip,),
             )
         ]
+        base["sessions"] = self.sessions(ip=ip, limit=5)
         base["intel"] = self._one(
             "SELECT score, reports, usage, isp, domain, fetched FROM intel WHERE ip = ?", (ip,)
         )
         return base
+
+    # --- the fake shell ---------------------------------------------------------
+
+    def sessions(
+        self, ip: str | None = None, limit: int = 10, since: float = 0, with_commands: bool = True
+    ) -> list[dict[str, Any]]:
+        """Most recent shell sessions that ran something, with their commands."""
+        where, args = "WHERE commands > 0 AND ts >= ?", [since]
+        if ip:
+            where += " AND ip = ?"
+            args.append(ip)
+        rows = self._all(
+            "SELECT id, ts, ended, ip, username, password, client, commands, country,"
+            f" country_name, city, org FROM sessions {where} ORDER BY ts DESC LIMIT ?",
+            (*args, limit),
+        )
+        if with_commands:
+            for r in rows:
+                r["log"] = [
+                    defang_urls(c["command"])
+                    for c in self._all(
+                        "SELECT command FROM commands WHERE session = ? ORDER BY id LIMIT 40",
+                        (r["id"],),
+                    )
+                ]
+        return rows
+
+    def shell_summary(self, days: int = 7) -> dict[str, Any]:
+        since = time.time() - days * 86400
+        s = self._one(
+            "SELECT COUNT(*) AS logins, COUNT(DISTINCT ip) AS ips,"
+            " SUM(commands > 0) AS active FROM sessions WHERE ts >= ?",
+            (since,),
+        )
+        c = self._one("SELECT COUNT(*) AS n FROM commands WHERE ts >= ?", (since,))
+        top = self._all(
+            "SELECT command AS value, COUNT(*) AS count, COUNT(DISTINCT ip) AS ips"
+            " FROM commands WHERE ts >= ? AND command NOT IN ('exit', 'logout')"
+            " GROUP BY command ORDER BY count DESC LIMIT 10",
+            (since,),
+        )
+        url_rows = self._all(
+            "SELECT urls, ip, ts FROM commands WHERE ts >= ? AND urls != ''"
+            " ORDER BY id DESC LIMIT 20000",
+            (since,),
+        )
+        downloads: dict[str, dict[str, Any]] = {}
+        for r in url_rows:
+            for u in r["urls"].split():
+                d = downloads.setdefault(u, {"url": u, "count": 0, "ips": set(), "last": 0})
+                d["count"] += 1
+                d["ips"].add(r["ip"])
+                d["last"] = max(d["last"], r["ts"])
+        dl = sorted(downloads.values(), key=lambda d: (-d["count"], -d["last"]))[:10]
+        for t in top:
+            t["value"] = defang_urls(t["value"])
+        return {
+            "days": days,
+            "logins": s["logins"] or 0,
+            "active": s["active"] or 0,
+            "ips": s["ips"] or 0,
+            "commands": c["n"],
+            "top_commands": top,
+            "downloads": [{**d, "url": defang(d["url"]), "ips": len(d["ips"])} for d in dl],
+        }

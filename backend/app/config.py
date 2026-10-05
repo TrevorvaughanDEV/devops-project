@@ -26,6 +26,8 @@ class Settings:
     sensor_banner: str = field(
         default_factory=lambda: os.environ.get("SENSOR_BANNER", "OpenSSH_9.6p1 Ubuntu-3ubuntu13.5")
     )
+    # Let bots with a weak password into an imitation shell (nothing ever executes)
+    shell_enabled: bool = field(default_factory=lambda: _bool("SHELL_ENABLED", True))
     max_connections: int = field(
         default_factory=lambda: int(os.environ.get("SENSOR_MAX_CONNECTIONS", "200"))
     )

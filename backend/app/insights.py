@@ -152,6 +152,25 @@ def build(store: Store, days: int = 7, now: float | None = None) -> list[dict[st
                 "text": f"The most common attack tool identifies as {c}: "
                         f"a scanning program {built}, not a person typing.",
             })  # fmt: skip
+
+    inside = store.query(
+        "SELECT COUNT(*) AS n, SUM(commands) AS cmds FROM sessions"
+        " WHERE ts >= ? AND ts < ? AND commands > 0",
+        args,
+    )[0]
+    if inside["n"]:
+        fetched = store.query(
+            "SELECT COUNT(DISTINCT session) AS c FROM commands"
+            " WHERE ts >= ? AND ts < ? AND urls != ''",
+            args,
+        )[0]["c"]
+        tail = f"; {_pct(fetched, inside['n'])}% tried to download something" if fetched else ""
+        out.append({
+            "key": "inside",
+            "stat": f"{inside['n']:,}",
+            "text": f"{inside['n']:,} bots got into the fake shell with a weak password and ran "
+                    f"{inside['cmds']:,} commands{tail}. None of it ever ran.",
+        })  # fmt: skip
     return out
 
 

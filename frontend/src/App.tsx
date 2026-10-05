@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   get, useLive, usePoll,
-  type Attempt, type HeatCell, type Insight, type MapPoint, type Meta, type Ranked, type Summary,
+  type Attempt, type Campaign, type HeatCell, type Insight, type MapPoint, type Meta, type Ranked,
+  type ShellCommand, type ShellData, type ShellSession, type Summary,
 } from "./api";
+import { Campaigns } from "./components/Campaigns";
+import { Inside } from "./components/Inside";
 import { About } from "./components/About";
 import { Insights } from "./components/Insights";
 import { useCountUp, useNow } from "./useCountUp";
@@ -36,6 +39,15 @@ export default function App() {
   const heat = usePoll<HeatCell[]>("/api/heatmap?days=30", 300_000).data;
   const insights = usePoll<Insight[]>("/api/insights?days=7", 120_000).data;
   const countries24 = usePoll<Ranked[]>("/api/top/countries?hours=24&limit=50", 60_000).data;
+  const campaigns = usePoll<Campaign[]>("/api/campaigns", 300_000).data;
+  const [shellBump, setShellBump] = useState(0);
+  const polledShell = usePoll<ShellData>("/api/shell?days=7", 120_000, shellBump).data;
+  const [shell, setShell] = useState<ShellData | null>(null);
+  const [liveSession, setLiveSession] = useState<string | null>(null);
+  useEffect(() => { if (polledShell) setShell(polledShell); }, [polledShell]);
+  const shellRef = useRef(shell);
+  shellRef.current = shell;
+  const lastBump = useRef(0);
 
   const [log, setLog] = useState<Attempt[]>([]);
   const [arcs, setArcs] = useState<Arc[]>([]);
@@ -79,6 +91,27 @@ export default function App() {
         return [...ps, { ip: a.ip, lat: a.lat!, lon: a.lon!, country: a.country, city: a.city, count: 1, last: a.ts }];
       });
     }, []),
+    useCallback((c: ShellCommand) => {
+      // Append to the session if it's on screen; a new session needs a refetch.
+      setLiveSession(c.session);
+      if (!shellRef.current?.recent.some((s) => s.id === c.session)) {
+        // New session: refetch, at most every few seconds while it types
+        if (Date.now() - lastBump.current > 4000) {
+          lastBump.current = Date.now();
+          setTimeout(() => setShellBump((n) => n + 1), 1500);
+        }
+        return;
+      }
+      setShell((d) => {
+        if (!d) return d;
+        const i = d.recent.findIndex((s) => s.id === c.session);
+        if (i < 0) return d;
+        const recent = d.recent.slice();
+        const s: ShellSession = recent[i];
+        recent[i] = { ...s, commands: s.commands + 1, log: s.log.length < 40 ? [...s.log, c.command] : s.log };
+        return { ...d, commands: d.commands + 1, recent };
+      });
+    }, []),
   );
 
   // The visitor's own attempt: mark it, and make sure it is in the log and on the map
@@ -106,6 +139,8 @@ export default function App() {
           <a className="wordmark" href="/">Who's knocking?</a>
           <nav aria-label="Sections">
             <a href="#tries">What they try</a>
+            <a href="#inside">Inside</a>
+            <a href="#botnets">Botnets</a>
             <a href="#where">Where from</a>
             <a href="/report">Weekly report</a>
             <a href="#about">About me</a>
@@ -129,8 +164,9 @@ export default function App() {
             </h1>
             <p className="lede">
               This is an SSH honeypot: a server left open on purpose{meta ? ` on port ${meta.port}` : ""}, which
-              records the username and password of every login attempt and lets none of them in. Every dot on the
-              map is a real machine. Click one to see what it tried.
+              records the username and password of every login attempt. The worst passwords "work" and open a fake
+              terminal, so you can also see what bots do once they think they're in. Every dot on the map is a real
+              machine. Click one to see what it tried.
             </p>
             <p className="hero-meta" aria-live="off">
               {latestBot ? (
@@ -167,6 +203,8 @@ export default function App() {
           </div>
         </section>
 
+        <Inside data={shell} liveSession={liveSession} onSelect={select} />
+
         <section id="where" className="band" aria-labelledby="where-title">
           <h2 id="where-title">Where they come from</h2>
           <p className="band-intro">
@@ -180,6 +218,8 @@ export default function App() {
           <h3 className="heat-title">When they come</h3>
           <Heatmap cells={heat} />
         </section>
+
+        <Campaigns items={campaigns} onSelect={select} />
 
         <section id="how" className="band" aria-labelledby="how-title">
           <h2 id="how-title">How it works</h2>

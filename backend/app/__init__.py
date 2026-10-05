@@ -1,1 +1,1 @@
-"""Who's Knocking: a low-interaction SSH honeypot with a live attack map."""
+"""Who's Knocking: an SSH honeypot with a fake shell, botnet detection and a live attack map."""

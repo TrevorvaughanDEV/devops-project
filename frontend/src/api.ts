@@ -14,6 +14,32 @@ export type Attempt = {
   lat: number | null;
   lon: number | null;
   org: string | null;
+  /** 1 when the password "worked" and the bot was let into the fake shell */
+  accepted?: number;
+};
+
+export type ShellCommand = { id: number; session: string; ts: number; ip: string; command: string };
+
+export type ShellSession = {
+  id: string; ts: number; ended: number | null; ip: string; username: string | null;
+  password: string | null; client: string | null; commands: number; country: string | null;
+  country_name: string | null; city: string | null; org: string | null; log: string[];
+};
+
+export type ShellData = {
+  days: number; logins: number; active: number; ips: number; commands: number;
+  top_commands: Ranked[];
+  downloads: { url: string; count: number; ips: number; last: number }[];
+  recent: ShellSession[];
+};
+
+export type Campaign = {
+  id: string; ips: number; attempts: number; share: number; client: string | null;
+  list_size: number; first_seen: number; last_seen: number; n_countries: number;
+  countries: { value: string; label: string; count: number }[];
+  networks: { value: string; count: number }[];
+  signature: { username: string; password: string; ips: number }[];
+  members: { ip: string; count: number; country: string | null }[];
 };
 
 export type Summary = {
@@ -50,6 +76,8 @@ export type IpDetail = {
   lat: number | null; lon: number | null; asn: number | null; org: string | null;
   credentials: { username: string; password: string | null; count: number }[];
   clients: string[];
+  sessions: ShellSession[];
+  campaign: { id: string; ips: number; n_countries: number; list_size: number; client: string | null } | null;
   intel: { score: number | null; reports: number | null; usage: string | null;
            isp: string | null; domain: string | null } | null;
 };
@@ -113,10 +141,12 @@ export function usePoll<T>(path: string, everyMs: number, bump = 0) {
 export type LiveState = "connecting" | "live" | "offline";
 
 /** Subscribe to the live feed, reconnecting with backoff. */
-export function useLive(onAttempt: (a: Attempt) => void) {
+export function useLive(onAttempt: (a: Attempt) => void, onCommand?: (c: ShellCommand) => void) {
   const [state, setState] = useState<LiveState>("connecting");
   const cb = useRef(onAttempt);
   cb.current = onAttempt;
+  const cmd = useRef(onCommand);
+  cmd.current = onCommand;
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -131,6 +161,7 @@ export function useLive(onAttempt: (a: Attempt) => void) {
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);
         if (msg.type === "attempt") cb.current(msg.data as Attempt);
+        else if (msg.type === "command") cmd.current?.(msg.data as ShellCommand);
       };
       ws.onclose = () => {
         if (closed) return;

@@ -1,7 +1,7 @@
 const STEPS = [
   {
     title: "A fake front door",
-    body: "A small SSH server I wrote in Python listens on the open internet. It looks like a normal Ubuntu box, accepts every login attempt, writes down the username and password, and refuses them all. Nobody ever gets a shell.",
+    body: "A small SSH server I wrote in Python listens on the open internet. It looks like a normal Ubuntu box and writes down the username and password of every login attempt. Almost all are refused. The few that use the very worst passwords get a fake terminal that records every command; nothing typed there ever runs.",
   },
   {
     title: "Who is it?",

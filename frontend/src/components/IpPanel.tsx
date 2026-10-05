@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { get, type IpDetail } from "../api";
 import { dateTime, flag, num, place, shown } from "../format";
+import { Terminal } from "./Terminal";
 
 export function IpPanel({ ip, onClose }: { ip: string; onClose: () => void }) {
   const [data, setData] = useState<IpDetail | null>(null);
@@ -46,6 +47,28 @@ export function IpPanel({ ip, onClose }: { ip: string; onClose: () => void }) {
               AbuseIPDB confidence <strong>{intel.score ?? "–"}%</strong> from {num(intel.reports)} reports
               {intel.usage ? `, listed as ${intel.usage.toLowerCase()}` : ""}.
             </p>
+          )}
+
+          {data.campaign && (
+            <p className="panel-intel">
+              Part of a botnet: <strong>{num(data.campaign.ips)} machines</strong> in {num(data.campaign.n_countries)}{" "}
+              {data.campaign.n_countries === 1 ? "country" : "countries"} working through the same{" "}
+              {num(data.campaign.list_size)}-password list. <a href="#botnets" onClick={() => ref.current?.close()}>See botnets</a>
+            </p>
+          )}
+
+          {data.sessions.length > 0 && (
+            <>
+              <h3>What it did inside the fake shell</h3>
+              {data.sessions.map((s) => (
+                <div key={s.id} className="panel-session">
+                  <p className="muted small">
+                    {dateTime(s.ts)}, logged in as <code>{s.username} / {shown(s.password)}</code>
+                  </p>
+                  <Terminal session={s} />
+                </div>
+              ))}
+            </>
           )}
 
           <h3>What it tried</h3>

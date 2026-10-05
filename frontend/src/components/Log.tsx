@@ -39,7 +39,9 @@ export function Log({ entries, state, port, mine, onSelect }: Props) {
                 <span className="log-ip">
                   <span aria-hidden="true">{flag(e.country)}</span> {e.ip}
                   {mine.has(e.id) ? <span className="tag tag-you">You</span>
-                    : e.method === "web" ? <span className="tag">Visitor</span> : null}
+                    : e.method === "web" ? <span className="tag">Visitor</span>
+                    : e.accepted ? <span className="tag tag-in" title="This password opens the fake shell">Got in</span>
+                    : null}
                 </span>
                 <code className="log-cred">
                   {e.username}

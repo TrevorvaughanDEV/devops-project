@@ -5,7 +5,7 @@ type Props = {
   title: string;
   caption: string;
   rows: Ranked[] | null;
-  kind: "credential" | "country" | "plain";
+  kind: "credential" | "country" | "plain" | "command";
   empty: string;
 };
 
@@ -33,6 +33,8 @@ export function RankList({ title, caption, rows, kind, empty }: Props) {
                     <span className="rank-label">
                       <span aria-hidden="true">{flag(r.value)}</span> {r.label ?? r.value}
                     </span>
+                  ) : kind === "command" ? (
+                    <code className="rank-label" title={r.value}>{r.value}</code>
                   ) : kind === "credential" ? (
                     <code className="rank-label">{r.value === "" ? "(empty)" : r.value}</code>
                   ) : (

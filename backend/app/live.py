@@ -24,10 +24,11 @@ class Hub:
     def unsubscribe(self, q: asyncio.Queue) -> None:
         self._queues.discard(q)
 
-    def publish(self, event: dict[str, Any]) -> None:
+    def publish(self, event: dict[str, Any], kind: str = "attempt") -> None:
+        message = {"type": kind, "data": event}
         for q in list(self._queues):
             try:
-                q.put_nowait(event)
+                q.put_nowait(message)
             except asyncio.QueueFull:
                 # A slow browser just misses events rather than holding up the sensor.
                 pass
