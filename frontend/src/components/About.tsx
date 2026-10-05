@@ -25,7 +25,7 @@ export function About() {
       <div className="about-intro">
         <h2 id="about-title">Built by Trevor Vaughan</h2>
         <p>
-          I'm a second-year Network Engineering student at TU Dublin, working towards cloud, DevOps and
+          I'm a Network Engineering student at TU Dublin, working towards cloud, DevOps and
           security engineering. I built and run everything on this site myself: the honeypot, the API,
           the map, the Azure server and the pipeline that deploys it.
         </p>
