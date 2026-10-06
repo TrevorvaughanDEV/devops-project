@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: whos-knocking-web
+spec:
+  # Internal only: an ingress or reverse proxy in front adds TLS, as Nginx does on the VM
+  type: ClusterIP
+  selector:
+    app: whos-knocking
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whos-knocking-honeypot
+spec:
+  # The honeypot is meant to be reached from the internet. On a real cluster this
+  # would be a LoadBalancer on port 22; NodePort keeps it testable locally.
+  type: NodePort
+  selector:
+    app: whos-knocking
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: ssh
+      nodePort: 30022

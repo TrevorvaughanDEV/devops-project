@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: whos-knocking
+  labels:
+    # Enforce the "restricted" Pod Security Standard: non-root, no privilege
+    # escalation, all capabilities dropped, seccomp on.
+    pod-security.kubernetes.io/enforce: restricted

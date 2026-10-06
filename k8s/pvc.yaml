@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: whos-knocking-data
+spec:
+  # SQLite database and the honeypot's persistent SSH host keys
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi

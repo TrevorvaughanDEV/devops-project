@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whos-knocking
+  labels:
+    app: whos-knocking
+spec:
+  # One replica on purpose: SQLite has a single writer, and the live feed fans out
+  # from memory in one process. Recreate stops the old pod before the new one
+  # starts, so two pods never write to the same database.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: whos-knocking
+  template:
+    metadata:
+      labels:
+        app: whos-knocking
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: trevorvaughandev/devops-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+            - name: ssh
+              containerPort: 2222
+          envFrom:
+            # Optional secrets, e.g. ABUSEIPDB_KEY. The app runs without them.
+            - secretRef:
+                name: whos-knocking-env
+                optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 400Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            failureThreshold: 4
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: whos-knocking-data

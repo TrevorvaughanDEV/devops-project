@@ -109,7 +109,8 @@ of 3 or more are reported. Sets are bitmasks, so each comparison is one AND and 
 | Packaging | Multi-stage Docker build (Node → geo download → slim Python), non-root |
 | Infrastructure | Azure VM, NSG, static IP, described in **Terraform** (`infra/terraform`) |
 | Edge | Nginx, Let's Encrypt, HSTS, Content-Security-Policy |
-| CI | GitHub Actions: lint, tests, dependency audits, Terraform validate, image smoke test |
+| Kubernetes | Manifests in `k8s/` (Kustomize): restricted Pod Security, probes, resource limits, persistent volume; deployed to a real cluster in CI |
+| CI | GitHub Actions: lint, tests, dependency audits, Terraform validate, image smoke test, Kubernetes deploy test |
 | CD | Pull-based (GitOps): the server deploys new commits on `main` itself, with tests, health check and automatic rollback |
 
 ## How changes go live
@@ -134,6 +135,11 @@ flowchart LR
 | **frontend** | `npm ci`, TypeScript typecheck, production build, `npm audit` |
 | **terraform** | `terraform fmt -check` and `terraform validate` |
 | **build** | Builds the image, then checks it boots, serves the page and API, and answers SSH with an OpenSSH banner |
+| **kubernetes** | Creates a [kind](https://kind.sigs.k8s.io/) cluster, deploys `k8s/` with `kubectl apply -k`, waits for the rollout, then runs the same checks through the cluster's Services |
+
+The live site runs the container directly with Docker because the VM has 1 GB of RAM, which
+leaves little room for a Kubernetes control plane. The `k8s/` manifests are tested on a real
+cluster on every push, so moving to a managed cluster (AKS, EKS) is a matter of applying them.
 
 **CD is pull-based**, the model behind Argo CD and Flux. A systemd timer on the server
 ([`scripts/autodeploy.sh`](scripts/autodeploy.sh)) checks `main` every two minutes. When it
