@@ -2,6 +2,8 @@ import { useState } from "react";
 import { usePoll, type Report as ReportData } from "../api";
 import { ago, flag, num } from "../format";
 import { RankList } from "./RankList";
+import { SiteHeader, type NavLink } from "./SiteHeader";
+import { useAmbient } from "../useAmbient";
 
 const fmtDay = (iso: string, opts: Intl.DateTimeFormatOptions) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-IE", opts);
@@ -58,7 +60,14 @@ function DayBars({ days }: { days: ReportData["by_day"] }) {
   );
 }
 
+const REPORT_NAV: NavLink[] = [
+  { href: "/", label: "Live map" },
+  { href: "/#about", label: "About me" },
+  { href: "https://github.com/TrevorvaughanDEV/devops-project", label: "Source on GitHub" },
+];
+
 export function Report() {
+  useAmbient();
   const { data: r, error } = usePoll<ReportData>("/api/report?days=7", 300_000);
   const [copied, setCopied] = useState(false);
 
@@ -74,16 +83,7 @@ export function Report() {
 
   return (
     <>
-      <header className="masthead">
-        <div className="masthead-inner">
-          <a className="wordmark" href="/">Who's knocking?</a>
-          <nav aria-label="Sections">
-            <a href="/">Live map</a>
-            <a href="/#about">About me</a>
-            <a href="https://github.com/TrevorvaughanDEV/devops-project">Source on GitHub</a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader links={REPORT_NAV} />
       <main className="report">
         {error && <p className="panel-error">Couldn't load the report: {error}</p>}
         {!r && !error && <p className="muted">Putting the report together…</p>}

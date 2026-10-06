@@ -9,6 +9,7 @@ import { Inside } from "./components/Inside";
 import { About } from "./components/About";
 import { Insights } from "./components/Insights";
 import { useCountUp, useNow } from "./useCountUp";
+import { useAmbient } from "./useAmbient";
 import { AttackMap, toArc, type Arc } from "./components/AttackMap";
 import { Heatmap } from "./components/Heatmap";
 import { HowItWorks } from "./components/HowItWorks";
@@ -16,7 +17,17 @@ import { IpPanel } from "./components/IpPanel";
 import { Log } from "./components/Log";
 import { RankList } from "./components/RankList";
 import { TryIt } from "./components/TryIt";
+import { SiteHeader, type NavLink } from "./components/SiteHeader";
 import { ago, num, place, shown } from "./format";
+
+const NAV: NavLink[] = [
+  { href: "#tries", label: "What they try" },
+  { href: "#inside", label: "Once inside" },
+  { href: "#where", label: "Where from" },
+  { href: "#botnets", label: "Botnets" },
+  { href: "/report", label: "Weekly report" },
+  { href: "#about", label: "About me" },
+];
 
 const LOG_SIZE = 60;
 const MAX_ARCS = 24;
@@ -28,6 +39,7 @@ const ipFromHash = () => {
 };
 
 export default function App() {
+  useAmbient();
   const meta = usePoll<Meta>("/api/meta", 60_000).data;
   const polledSummary = usePoll<Summary>("/api/summary?hours=24", 30_000).data;
   const polledPoints = usePoll<MapPoint[]>("/api/map?hours=24", 60_000).data;
@@ -134,22 +146,11 @@ export default function App() {
   const latestBot = log.find((a) => a.method !== "web");
   return (
     <>
-      <header className="masthead">
-        <div className="masthead-inner">
-          <a className="wordmark" href="/">Who's knocking?</a>
-          <nav aria-label="Sections">
-            <a href="#tries">What they try</a>
-            <a href="#inside">Once inside</a>
-            <a href="#where">Where from</a>
-            <a href="#botnets">Botnets</a>
-            <a href="/report">Weekly report</a>
-            <a href="#about">About me</a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader links={NAV} />
 
       <main>
         <section className="hero" aria-labelledby="hero-title">
+          <div className="hero-bg" aria-hidden="true"><span className="hero-grid" /><span className="hero-beam" /></div>
           <div className="hero-text">
             <h1 id="hero-title">
               {s && s.attempts > 0 ? (

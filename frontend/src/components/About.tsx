@@ -1,21 +1,25 @@
+// `stack` only lists technologies the project's own description already names.
 const PROJECTS = [
   {
     name: "Who's Knocking? (this site)",
     href: "https://github.com/TrevorvaughanDEV/devops-project",
     link: "Source on GitHub",
     body: "An SSH honeypot I wrote in Python, streaming real attacks to a React map. Weak passwords open a fake shell that records what bots do once inside, and a clustering step picks out botnets. FastAPI, SQLite, Docker, Nginx, Terraform on Azure, and pull-based deploys that test, health-check and roll back on their own.",
+    stack: ["Python", "React", "FastAPI", "SQLite", "Docker", "Nginx", "Terraform", "Azure"],
   },
   {
     name: "Server monitor",
     href: "https://monitor.trevorvaughan.dev",
     link: "monitor.trevorvaughan.dev",
     body: "The first version of this site: a Flask dashboard of live CPU, memory and disk use with accounts and alerts. Built on AWS EC2, then moved to Azure when the free plan ended.",
+    stack: ["Flask", "AWS EC2", "Azure"],
   },
   {
     name: "Weekly attack report",
     href: "/report",
     link: "Read this week's report",
     body: "A summary written automatically from the honeypot's data each week: what was tried, from where, what bots did inside the fake shell, the biggest botnets, and how it compares with the week before.",
+    stack: [] as string[],
   },
 ];
 
@@ -30,16 +34,29 @@ export function About() {
           the API, the map, the Azure server and the pipeline that deploys it.
         </p>
         <p>I'm open to internships in cloud, DevOps, networking and security.</p>
+        <ul className="domains" aria-label="Focus areas">
+          <li>Networking</li>
+          <li>Cloud</li>
+          <li>DevOps</li>
+          <li>Security</li>
+        </ul>
         <p className="about-links">
           <a href="https://www.linkedin.com/in/trevor-vaughan-1739912ab/">LinkedIn</a>
           <a href="https://github.com/TrevorvaughanDEV">GitHub</a>
         </p>
       </div>
       <ul className="projects">
-        {PROJECTS.map((p) => (
-          <li key={p.name}>
+        {PROJECTS.map((p, i) => (
+          <li key={p.name} className={`project${i === 0 ? " project-main" : ""}`}>
             <h3>{p.name}</h3>
             <p>{p.body}</p>
+            {p.stack.length > 0 && (
+              <ul className="stack" aria-label="Technologies">
+                {p.stack.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            )}
             <a href={p.href}>{p.link}</a>
           </li>
         ))}
